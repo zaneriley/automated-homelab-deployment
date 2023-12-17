@@ -55,7 +55,7 @@
         - { key: "net.ipv4.tcp_congestion_control", value: "bbr" }
       register: tcp_congestion_control_result
 
-- name: Connect to NAS and prepare for streaming
+- name: Connect to NAS
   hosts: nucs
   become: yes
   tasks:

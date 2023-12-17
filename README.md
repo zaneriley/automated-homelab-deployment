@@ -3,7 +3,7 @@
 This is a set of Ansible playbooks designed for setting up and managing a network of Intel NUCs to run docker applications. It focuses on deploying a range of Docker containers on each NUC, while maintaining a common infrastructure. While this is for my personal homelab, you might find some use from this if you:
 
 * Don't want to set up your docker machines manually each time
-* You had your entire homelab get deleted and feel bad about it so you tell you're self you'll automate it but then it takes forever to remember all things you did to create your server in the first place but after a while you finally get something working
+* You had your entire homelab get deleted and feel bad about it so you tell yourself you'll automate it but then it takes forever to remember all things you did to create your server in the first place but after a while you finally get something working
 * Are interesting in learning more about idempotency, IaC, etc
 
 ## Prerequisites
