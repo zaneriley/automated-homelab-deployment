@@ -1,9 +1,0 @@
-- name: Remove the temporary admin user after maintenance
-  hosts: nucs
-  become: yes
-  tasks:
-    - name: Remove the temporary user and its home directory
-      user:
-        name: tempadmin
-        state: absent
-        remove: yes
