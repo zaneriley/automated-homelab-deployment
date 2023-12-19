@@ -66,7 +66,7 @@
 
     - name: Check if NFS server is reachable
       wait_for:
-        host: "{{ nas_ip }}"
+        host: "{{ hostvars['NAS'].ansible_host }}"
         port: 2049
         state: started
         timeout: 10
@@ -158,12 +158,10 @@
       when: not git_repo_check.stat.exists
       become: false
 
-
 - name: Check if reboot needed
   hosts: nucs
   become: yes
   tasks:
-
     - name: Check if a reboot is required for sysctl settings to apply
       command: needrestart -b
       register: reboot_required
@@ -172,33 +170,77 @@
       failed_when: reboot_required.rc > 1
       notify: Reboot System if required 
 
-    - name: Send reboot required notification to Discord
+    - name: Notify Discord - Reboot Required
       uri:
         url: "{{ discord_webhook }}"
         method: POST
-        body: '{"content": "**{{ inventory_hostname }}** server has been updated and requires a reboot. Rebooting now..."}'
+        body: '{"content": "**{{ inventory_hostname }}** server requires a reboot. Rebooting now..."}'
         body_format: json
         headers:
           Content-Type: "application/json"
         status_code: [200, 204]
       delegate_to: localhost
-      when: reboot_required.rc == 0
+      when: reboot_required.rc == 0 and reboot_required.changed
 
-    - name: Send no reboot required notification to Discord
+    - name: Notify Discord - No Reboot Required
       uri:
         url: "{{ discord_webhook }}"
         method: POST
-        body: '{"content": "**{{ inventory_hostname }}** server has been updated and does not require a reboot. Update complete."}'
+        body: '{"content": "**{{ inventory_hostname }}** server updated, no reboot required."}'
         body_format: json
         headers:
           Content-Type: "application/json"
         status_code: [200, 204]
       delegate_to: localhost
-      when: reboot_required.rc != 0
+      when: reboot_required.rc != 0 or not reboot_required.changed
 
   handlers:
     - name: Reboot System if required
       reboot:
         test_command: uptime
+        reboot_timeout: 600
         msg: "Reboot initiated by Ansible for applying sysctl settings."
+        pre_reboot_delay: 0
+        post_reboot_delay: 30
+        connect_timeout: 5
+        delay: 5
+        check_mode: no
       listen: "Reboot System if required"
+      notify: Wait for System to come back online
+
+    - name: Wait for System to come back online
+      wait_for_connection:
+        delay: 60
+        timeout: 300
+      notify: Notify Discord - Reboot Completed
+
+    - name: Notify Discord - Reboot Completed
+      uri:
+        url: "{{ discord_webhook }}"
+        method: POST
+        body: '{"content": "**{{ inventory_hostname }}** server reboot completed successfully."}'
+        body_format: json
+        headers:
+          Content-Type: "application/json"
+        status_code: [200, 204]
+      delegate_to: localhost
+
+
+- name: Deploy Docker Compose stack after reboot
+  hosts: nucs
+  become: yes
+  tasks:
+    - name: Deploy Docker Compose stack
+      community.docker.docker_compose:
+        project_src: "{{ homelab_srv_folder }}"
+        state: present
+        pull: yes
+        build: yes
+        recreate: smart
+        restart: yes
+      become_user: ansible
+      register: output
+
+    - name: Log Docker Compose output
+      debug:
+        msg: "{{ output }}"

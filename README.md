@@ -78,13 +78,25 @@ SSH Agent Forwarding is used to securely use your SSH keys from the control node
 2. **Test SSH Agent Forwarding**: Test the setup by running `ssh -A ansible@remote-node-ip ssh -T git@github.com`. You should see a message indicating successful authentication but no shell access on GitHub.
 3. **Configure Ansible**: Make sure your Ansible configuration supports SSH Agent Forwarding. This is often enabled by default in recent versions of Ansible.
 
-## Running the Playbook
+## Running Playbooks
 
-Execute the playbook using:
+You'll run these playbooks from the control node. 
+
+First run the setup playbook :
 
 ```bash
 ansible-playbook -i inventory setup.yml
 ```
 
-Run this command from the control node.
+Then you'll run the backup playbook to set up the backup infra.
+```bash
+ansible-playbook -i inventory backup.yml
+```
 
+Lastly, you'll want to set the backups on a schedule. Here’s how to do it:
+
+```bash
+ansible-playbook scheduler.yml
+```
+
+This will establish a cron job on the control node to run your backup playbook at the desired time.

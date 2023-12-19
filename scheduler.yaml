@@ -1,0 +1,12 @@
+---
+- name: Configure Backup Cron Job
+  hosts: localhost
+  become: yes
+  tasks:
+    - name: Schedule Ansible backup playbook
+      cron:
+        name: "Backup Job"
+        minute: "0"
+        hour: "19"
+        job: "/usr/bin/ansible-playbook backup.yml >> /var/log/backup-playbook.log 2>&1"
+        state: present

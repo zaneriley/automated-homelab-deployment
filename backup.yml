@@ -1,0 +1,59 @@
+---
+- name: Set up backups on NUCs
+  hosts: nucs
+  become: yes
+  tasks:
+    - name: Include Vault variables
+      include_vars:
+        file: vault.yml
+
+    - name: Check if NFS server is reachable
+      wait_for:
+        host: "{{ hostvars['NAS'].ansible_host }}"
+        port: 2049
+        state: started
+        timeout: 10
+      register: nfs_server_reachable
+      ignore_errors: yes
+
+    - name: Ensure backup directory exists for each NUC on the NAS
+      file:
+        path: "{{ backup_mount_dir }}/{{ inventory_hostname }}"
+        state: directory
+        mode: '0755'
+      when: nfs_server_reachable is success
+
+    - name: Check if BorgBackup repository exists
+      stat:
+        path: "{{ backup_mount_dir }}/{{ inventory_hostname }}/borg"
+      register: borg_repo_initialized
+
+    - name: Initialize BorgBackup Repository if not present
+      command: borg init --encryption=repokey "{{ backup_mount_dir }}/{{ inventory_hostname }}/borg"
+      environment:
+        BORG_PASSPHRASE: "{{ borg_passphrase }}"
+      args:
+        creates: "{{ backup_mount_dir }}/{{ inventory_hostname }}/borg"
+      when: nfs_server_reachable is success
+
+    - name: Get current timestamp
+      command: date +%Y-%m-%d-%H%M%S
+      register: current_timestamp
+      changed_when: false
+
+    - name: Create a backup with BorgBackup
+      command: borg create --stats --progress "{{ backup_mount_dir }}/{{ inventory_hostname }}/borg::{{ current_timestamp.stdout }}--srv" /srv
+      environment:
+        BORG_PASSPHRASE: "{{ borg_passphrase }}"
+      when: nfs_server_reachable is success
+
+    - name: Prune old backups with BorgBackup
+      command: >-
+        borg prune --stats
+        --keep-daily=7
+        --keep-weekly=4
+        --keep-monthly=4
+        "{{ backup_mount_dir }}/{{ inventory_hostname }}/borg"
+      environment:
+        BORG_PASSPHRASE: "{{ borg_passphrase }}"
+      when: nfs_server_reachable is success
