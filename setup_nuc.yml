@@ -1,64 +1,15 @@
-- name: Set up dockeruser and homelab dependencies
+---
+- name: Set up backups on NUCs
   hosts: nucs
   become: yes
   vars:
-    packages:
-      - curl
-      - vim
-      - git
-      - htop
-      - nfs-common
-      - lm-sensors
-      - docker.io
-      - docker-compose
-      - borgbackup
-      - needrestart
-
+    backup_mount_dir: "/mnt/backup"  # Adjust according to your setup
+    media_mount_dir: "/mnt/media"    # Adjust according to your setup
   tasks:
     - name: Include Vault variables
       include_vars:
         file: vault.yml
 
-    - name: Update the cache and install necessary packages
-      apt:
-        name: "{{ packages }}"
-        state: latest
-        update_cache: yes
-        cache_valid_time: 3600 # 1 hour
-
-    # - name: Ensure the dockeruser is present and has docker group
-    #   user:
-    #     name: dockeruser
-    #     groups: dockergroup
-    #     append: yes
-    #     system: no
-
-    - name: Disable sleep targets
-      systemd:
-        name: "{{ item }}"
-        state: stopped
-        enabled: no
-        masked: yes
-      loop:
-        - sleep.target
-        - suspend.target
-        - hibernate.target
-        - hybrid-sleep.target
-
-    - name: Set up BBR for TCP Congestion Control
-      sysctl:
-        name: "{{ item.key }}"
-        value: "{{ item.value }}"
-        state: present
-      loop:
-        - { key: "net.core.default_qdisc", value: "fq" }
-        - { key: "net.ipv4.tcp_congestion_control", value: "bbr" }
-      register: tcp_congestion_control_result
-
-- name: Connect to NAS
-  hosts: nucs
-  become: yes
-  tasks:
     - name: Include NAS Variables
       set_fact:
         nas_backup_server_path: "{{ hostvars['NAS'].backup_server_path }}"
@@ -71,176 +22,73 @@
         state: started
         timeout: 10
       register: nfs_server_reachable
-      ignore_errors: yes
 
-    - name: Create media directory for NFS mount if not present
+    - name: Ensure backup directory exists for each NUC on the NAS
       file:
-        path: "{{ media_mount_dir }}"
+        path: "{{ backup_mount_dir }}/{{ inventory_hostname }}"
         state: directory
+        mode: '0755'
       when: nfs_server_reachable is success
-
-    - name: Mount common media NFS share
-      mount:
-        path: "{{ media_mount_dir }}"
-        src: "{{ hostvars['NAS'].ansible_host }}:{{ nas_media_server_path }}"
-        fstype: "nfs"
-        opts: "defaults,_netdev"
-        state: "mounted"
-      when: nfs_server_reachable is success
-
-    - name: Mount specific backup NFS share for each NUC
-      mount:
-        path: "{{ backup_mount_dir }}"
-        src: "{{ hostvars['NAS'].ansible_host }}:{{ nas_backup_server_path }}/{{ inventory_hostname }}"
-        fstype: "nfs"
-        opts: "defaults,_netdev"
-        state: "mounted"
-      when: nfs_server_reachable is success
-
-- name: Set up appropriate homelab docker stack
-  hosts: nucs
-  become: yes
-  tasks:
-    - name: Let ansible have access to /srv directory
-      file:
-        path: "/srv"
-        state: directory
-        owner: ansible
-        group: ansible
-      become: yes  
-
-    - name: Ensure .ssh directory exists for ansible user
-      file:
-        path: "/home/ansible/.ssh"
-        state: directory
-        owner: ansible
-        group: ansible
-        mode: '0700'
-
-    - name: Ensure known_hosts file exists
-      file:
-        path: "/home/ansible/.ssh/known_hosts"
-        state: touch
-        owner: ansible
-        group: ansible
-        mode: '0644'
-        
-    - name: Ensure GitHub's host key is known
-      known_hosts:
-        name: "github.com"
-        key: "{{ lookup('pipe', 'ssh-keyscan -t rsa github.com') }}"
-        state: present
-
-    - name: Ensure SSH is configured to accept GitHub host key on first connect
-      lineinfile:
-        path: "/home/ansible/.ssh/config"
-        create: yes
-        state: present
-        line: |
-          Host github.com
-            StrictHostKeyChecking accept-new
-        owner: ansible
-        group: ansible
-        mode: '0644'
     
-    - name: Check if GitHub repository is already cloned
-      stat:
-        path: "{{ homelab_srv_folder }}/.git"
-      register: git_repo_check
+    - name: Block for backup tasks with NFS reachable
+      block:
+        - name: Mount common media NFS share
+          mount:
+            path: "{{ media_mount_dir }}"
+            src: "{{ hostvars['NAS'].ansible_host }}:{{ nas_media_server_path }}"
+            fstype: "nfs"
+            opts: "defaults,_netdev"
+            state: "mounted"
 
-    - name: Clone GitHub repository
-      git:
-        repo: "{{ github_repo }}"
-        dest: "{{ homelab_srv_folder }}"
-        version: "main"
-      environment:
-        GIT_SSH_COMMAND: "ssh -o ForwardAgent=yes"
-      when: not git_repo_check.stat.exists
-      become: false
+        - name: Mount specific backup NFS share for each NUC
+          mount:
+            path: "{{ backup_mount_dir }}"
+            src: "{{ hostvars['NAS'].ansible_host }}:{{ nas_backup_server_path }}/{{ inventory_hostname }}"
+            fstype: "nfs"
+            opts: "defaults,_netdev"
+            state: "mounted"
 
-- name: Check if reboot needed
-  hosts: nucs
-  become: yes
-  tasks:
-    - name: Check if a reboot is required for sysctl settings to apply
-      command: needrestart -b
-      register: reboot_required
-      ignore_errors: true
-      changed_when: reboot_required.rc == 0
-      failed_when: reboot_required.rc > 1
-      notify: Reboot System if required 
+        - name: Check if BorgBackup repository exists
+          stat:
+            path: "{{ backup_mount_dir }}/{{ inventory_hostname }}/borg"
+          register: borg_repo_initialized
+        
+        - name: Initialize BorgBackup Repository if not present
+          command: borg init --encryption=repokey "{{ backup_mount_dir }}/{{ inventory_hostname }}/borg"
+          environment:
+            BORG_PASSPHRASE: "{{ borg_passphrase }}"
+          args:
+            creates: "{{ backup_mount_dir }}/{{ inventory_hostname }}/borg"
+          when: not borg_repo_initialized.stat.exists
 
-    - name: Notify Discord - Reboot Required
-      uri:
-        url: "{{ discord_webhook }}"
-        method: POST
-        body: '{"content": "**{{ inventory_hostname }}** server requires a reboot. Rebooting now..."}'
-        body_format: json
-        headers:
-          Content-Type: "application/json"
-        status_code: [200, 204]
-      delegate_to: localhost
-      when: reboot_required.rc == 0 and reboot_required.changed
+        - name: Get current timestamp
+          command: date +%Y-%m-%d-%H%M%S
+          register: current_timestamp
+          changed_when: false
+        
+        - name: Create a backup with BorgBackup
+          command: borg create --stats --progress "{{ backup_mount_dir }}/{{ inventory_hostname }}/borg::{{ current_timestamp.stdout }}--srv" /srv
+          environment:
+            BORG_PASSPHRASE: "{{ borg_passphrase }}"
+        
+        - name: Prune old backups with BorgBackup
+          command: >-
+            borg prune --stats
+            --keep-daily=7
+            --keep-weekly=4
+            --keep-monthly=6
+            "{{ backup_mount_dir }}/{{ inventory_hostname }}/borg"
+          environment:
+            BORG_PASSPHRASE: "{{ borg_passphrase }}"
 
-    - name: Notify Discord - No Reboot Required
-      uri:
-        url: "{{ discord_webhook }}"
-        method: POST
-        body: '{"content": "**{{ inventory_hostname }}** server updated, no reboot required."}'
-        body_format: json
-        headers:
-          Content-Type: "application/json"
-        status_code: [200, 204]
-      delegate_to: localhost
-      when: reboot_required.rc != 0 or not reboot_required.changed
-
-  handlers:
-    - name: Reboot System if required
-      reboot:
-        test_command: uptime
-        reboot_timeout: 600
-        msg: "Reboot initiated by Ansible for applying sysctl settings."
-        pre_reboot_delay: 0
-        post_reboot_delay: 30
-        connect_timeout: 5
-        delay: 5
-        check_mode: no
-      listen: "Reboot System if required"
-      notify: Wait for System to come back online
-
-    - name: Wait for System to come back online
-      wait_for_connection:
-        delay: 60
-        timeout: 300
-      notify: Notify Discord - Reboot Completed
-
-    - name: Notify Discord - Reboot Completed
-      uri:
-        url: "{{ discord_webhook }}"
-        method: POST
-        body: '{"content": "**{{ inventory_hostname }}** server reboot completed successfully."}'
-        body_format: json
-        headers:
-          Content-Type: "application/json"
-        status_code: [200, 204]
-      delegate_to: localhost
-
-
-- name: Deploy Docker Compose stack after reboot
-  hosts: nucs
-  become: yes
-  tasks:
-    - name: Deploy Docker Compose stack
-      community.docker.docker_compose:
-        project_src: "{{ homelab_srv_folder }}"
-        state: present
-        pull: yes
-        build: yes
-        recreate: smart
-        restart: yes
-      become_user: ansible
-      register: output
-
-    - name: Log Docker Compose output
-      debug:
-        msg: "{{ output }}"
+      rescue:
+        - name: Notify Discord - Backup Failed
+          uri:
+            url: "{{ discord_webhook }}"
+            method: POST
+            body: '{"content": "**{{ inventory_hostname }}** backup failed! Check immediately."}'
+            body_format: json
+            headers:
+              Content-Type: "application/json"
+            status_code: [200, 204]
+          delegate_to: localhost
