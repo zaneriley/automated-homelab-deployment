@@ -1,4 +1,5 @@
 ---
+
 - name: Set up backups on NUCs
   hosts: nucs
   become: yes
@@ -14,46 +15,66 @@
         state: started
         timeout: 10
       register: nfs_server_reachable
-      ignore_errors: yes
 
-    - name: Ensure backup directory exists for each NUC on the NAS
+    - name: Mount general backup NFS share for each NUC
+      mount:
+        path: "{{ backup_mount_dir }}"
+        src: "{{ hostvars['NAS'].ansible_host }}:{{ hostvars['NAS'].backup_server_path }}"
+        fstype: "nfs"
+        opts: "defaults,_netdev"
+        state: "mounted"
+      when: nfs_server_reachable is success
+
+    - name: Ensure instance-specific backup directory exists
       file:
         path: "{{ backup_mount_dir }}/{{ inventory_hostname }}"
         state: directory
         mode: '0755'
-      when: nfs_server_reachable is success
 
-    - name: Check if BorgBackup repository exists
-      stat:
-        path: "{{ backup_mount_dir }}/{{ inventory_hostname }}/borg"
-      register: borg_repo_initialized
+    - name: Block for backup tasks with NFS mounted
+      block:
+        - name: Check if BorgBackup repository exists
+          stat:
+            path: "{{ backup_mount_dir }}/{{ inventory_hostname }}/borg"
+          register: borg_repo_initialized
 
-    - name: Initialize BorgBackup Repository if not present
-      command: borg init --encryption=repokey "{{ backup_mount_dir }}/{{ inventory_hostname }}/borg"
-      environment:
-        BORG_PASSPHRASE: "{{ borg_passphrase }}"
-      args:
-        creates: "{{ backup_mount_dir }}/{{ inventory_hostname }}/borg"
-      when: nfs_server_reachable is success
+        - name: Initialize BorgBackup Repository if not present
+          command: borg init --encryption=repokey "{{ backup_mount_dir }}/{{ inventory_hostname }}/borg"
+          environment:
+            BORG_PASSPHRASE: "{{ borg_passphrase }}"
+          args:
+            creates: "{{ backup_mount_dir }}/{{ inventory_hostname }}/borg"
+          when: not borg_repo_initialized.stat.exists
 
-    - name: Get current timestamp
-      command: date +%Y-%m-%d-%H%M%S
-      register: current_timestamp
-      changed_when: false
+        - name: Get current timestamp
+          command: date +%Y-%m-%d-%H%M%S
+          register: current_timestamp
+          changed_when: false
 
-    - name: Create a backup with BorgBackup
-      command: borg create --stats --progress "{{ backup_mount_dir }}/{{ inventory_hostname }}/borg::{{ current_timestamp.stdout }}--srv" /srv
-      environment:
-        BORG_PASSPHRASE: "{{ borg_passphrase }}"
-      when: nfs_server_reachable is success
 
-    - name: Prune old backups with BorgBackup
-      command: >-
-        borg prune --stats
-        --keep-daily=7
-        --keep-weekly=4
-        --keep-monthly=4
-        "{{ backup_mount_dir }}/{{ inventory_hostname }}/borg"
-      environment:
-        BORG_PASSPHRASE: "{{ borg_passphrase }}"
-      when: nfs_server_reachable is success
+        - name: Create a backup with BorgBackup
+          command: borg create --stats --progress "{{ backup_mount_dir }}/{{ inventory_hostname }}/borg::{{ current_timestamp.stdout }}-{{ inventory_hostname }}" "{{ hostvars[inventory_hostname].homelab_srv_folder }}"
+          environment:
+            BORG_PASSPHRASE: "{{ borg_passphrase }}"
+
+        - name: Prune old backups with BorgBackup
+          command: >-
+            borg prune --stats
+            --keep-daily=7
+            --keep-weekly=4
+            --keep-monthly=6
+            "{{ backup_mount_dir }}/{{ inventory_hostname }}/borg"
+          environment:
+            BORG_PASSPHRASE: "{{ borg_passphrase }}"
+
+      rescue:
+        - name: Notify Discord - Backup Failed
+          uri:
+            url: "{{ discord_webhook }}"
+            method: POST
+            body: '{"content": "**{{ inventory_hostname }}** backup failed! Check immediately."}'
+            body_format: json
+            headers:
+              Content-Type: "application/json"
+            status_code: [200, 204]
+          delegate_to: localhost
