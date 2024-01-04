@@ -1,15 +1,67 @@
----
-- name: Set up backups on NUCs
+- name: Set up dockeruser and homelab dependencies
   hosts: nucs
   become: yes
   vars:
-    backup_mount_dir: "/mnt/backup"  # Adjust according to your setup
-    media_mount_dir: "/mnt/media"    # Adjust according to your setup
+    packages:
+      - curl
+      - vim
+      - git
+      - unzip
+      - htop
+      - intel-gpu-tools
+      - net-tools
+      - nfs-common
+      - lm-sensors
+      - docker.io
+      - docker-compose
+      - borgbackup
+      - needrestart
+
   tasks:
     - name: Include Vault variables
       include_vars:
         file: vault.yml
 
+    - name: Update the cache and install necessary packages
+      apt:
+        name: "{{ packages }}"
+        state: latest
+        update_cache: yes
+        cache_valid_time: 3600 # 1 hour
+
+    # - name: Ensure the dockeruser is present and has docker group
+    #   user:
+    #     name: dockeruser
+    #     groups: dockergroup
+    #     append: yes
+    #     system: no
+
+    - name: Disable sleep targets
+      systemd:
+        name: "{{ item }}"
+        state: stopped
+        enabled: no
+        masked: yes
+      loop:
+        - sleep.target
+        - suspend.target
+        - hibernate.target
+        - hybrid-sleep.target
+
+    - name: Set up BBR for TCP Congestion Control
+      sysctl:
+        name: "{{ item.key }}"
+        value: "{{ item.value }}"
+        state: present
+      loop:
+        - { key: "net.core.default_qdisc", value: "fq" }
+        - { key: "net.ipv4.tcp_congestion_control", value: "bbr" }
+      register: tcp_congestion_control_result
+
+- name: Connect to NAS
+  hosts: nucs
+  become: yes
+  tasks:
     - name: Include NAS Variables
       set_fact:
         nas_backup_server_path: "{{ hostvars['NAS'].backup_server_path }}"
@@ -23,72 +75,267 @@
         timeout: 10
       register: nfs_server_reachable
 
-    - name: Ensure backup directory exists for each NUC on the NAS
+    - name: Create media directory for NFS mount if not present
       file:
-        path: "{{ backup_mount_dir }}/{{ inventory_hostname }}"
+        path: "{{ media_mount_dir }}"
         state: directory
-        mode: '0755'
       when: nfs_server_reachable is success
+
+    - name: Mount common media NFS share
+      mount:
+        path: "{{ media_mount_dir }}"
+        src: "{{ hostvars['NAS'].ansible_host }}:{{ nas_media_server_path }}"
+        fstype: "nfs"
+        opts: "defaults,_netdev"
+        state: "mounted"
+      when: nfs_server_reachable is success
+
+    - name: Mount specific backup NFS share for each NUC
+      mount:
+        path: "{{ backup_mount_dir }}"
+        src: "{{ hostvars['NAS'].ansible_host }}:{{ nas_backup_server_path }}/{{ inventory_hostname }}"
+        fstype: "nfs"
+        opts: "defaults,_netdev"
+        state: "mounted"
+      when: nfs_server_reachable is success
+
+- name: Set up Cloudflare tunnel
+  hosts: nucs
+  become: yes
+  vars:
+    cloudflared_config_dir: "/etc/cloudflared"
+    cloudflared_template_dir: "{{ playbook_dir}}/templates"
+  tasks:
+    - name: Set tunnel_name based on inventory_hostname
+      set_fact:
+        tunnel_name: "{{ inventory_hostname }}"
+
+    - name: Install Cloudflared
+      ansible.builtin.package:
+        name: cloudflared
+        state: present
+
+    - name: Check for existing Cloudflare tunnel
+      uri:
+        url: "https://api.cloudflare.com/client/v4/accounts/{{ cloudflare_account_id }}/tunnels"
+        method: GET
+        headers:
+          Authorization: "Bearer {{ cloudflare_api_token }}"
+          Content-Type: "application/json"
+        status_code: 200
+      register: existing_tunnels
+
+    - name: Delete existing tunnel if it exists
+      uri:
+        url: "https://api.cloudflare.com/client/v4/accounts/{{ cloudflare_account_id }}/tunnels/{{ item.id }}"
+        method: DELETE
+        headers:
+          Authorization: "Bearer {{ cloudflare_api_token }}"
+          Content-Type: "application/json"
+        status_code: [200, 204]
+      loop: "{{ existing_tunnels.json.result }}"
+      when: item.name == tunnel_name
+
+    - name: Create Cloudflare tunnel
+      uri:
+        url: "https://api.cloudflare.com/client/v4/accounts/{{ cloudflare_account_id }}/tunnels"
+        method: POST
+        body_format: json
+        body: "{{ {'name': tunnel_name} | to_json }}"
+        headers:
+          Authorization: "Bearer {{ cloudflare_api_token }}"
+          Content-Type: "application/json"
+        status_code: [200, 201]
+      register: cloudflared_tunnel_creation
+
+    - name: Extract Cloudflared tunnel UUID
+      set_fact:
+        cloudflared_tunnel_uuid: "{{ cloudflared_tunnel_creation.json.result.id }}"
+      when: cloudflared_tunnel_creation.json.result.id is defined
+
+    - name: Construct tunnel credentials file
+      copy:
+        dest: "{{ cloudflared_config_dir }}/{{ cloudflared_tunnel_uuid }}.json"
+        content: |
+          {
+            "AccountTag": "{{ cloudflared_tunnel_creation.json.result.credentials_file.AccountTag }}",
+            "TunnelID": "{{ cloudflared_tunnel_creation.json.result.credentials_file.TunnelID }}",
+            "TunnelName": "{{ cloudflared_tunnel_creation.json.result.credentials_file.TunnelName }}",
+            "TunnelSecret": "{{ cloudflared_tunnel_creation.json.result.credentials_file.TunnelSecret }}"
+          }
+        mode: '0600'
+      when: cloudflared_tunnel_creation.json.result.credentials_file is defined
+
+    - name: Configure Cloudflared
+      ansible.builtin.template:
+        src: "{{ cloudflared_template_dir }}/cloudflared_config.yml.j2"
+        dest: "/etc/cloudflared/config.yml"
+      vars:
+        cloudflared_credentials_file: "/etc/cloudflared/{{ cloudflared_tunnel_uuid }}.json"
+
+    - name: Install Cloudflared service
+      ansible.builtin.command:
+        cmd: cloudflared service install
+      become: true
+      when: cloudflared_tunnel_creation.json.result.credentials_file is defined
+
+    - name: Ensure Cloudflared service is started
+      ansible.builtin.service:
+        name: cloudflared
+        state: restarted
+        enabled: yes
+
+- name: Set up appropriate homelab docker stack
+  hosts: nucs
+  become: yes
+  vars:
+    ansible_ssh_common_args: '-o ForwardAgent=yes'
+  tasks:
+    - name: Let ansible have access to /srv directory
+      file:
+        path: "/srv"
+        state: directory
+        owner: ansible
+        group: ansible
+      become: yes  
+
+    - name: Ensure .ssh directory exists for ansible user
+      file:
+        path: "/home/ansible/.ssh"
+        state: directory
+        owner: ansible
+        group: ansible
+        mode: '0700'
+
+    - name: Ensure known_hosts file exists
+      file:
+        path: "/home/ansible/.ssh/known_hosts"
+        state: touch
+        owner: ansible
+        group: ansible
+        mode: '0644'
+        
+    - name: Ensure GitHub's host key is known
+      known_hosts:
+        name: "github.com"
+        key: "{{ lookup('pipe', 'ssh-keyscan -t rsa github.com') }}"
+        state: present
+
+    - name: Ensure SSH is configured to accept GitHub host key on first connect
+      lineinfile:
+        path: "/home/ansible/.ssh/config"
+        create: yes
+        state: present
+        line: |
+          Host github.com
+            StrictHostKeyChecking accept-new
+        owner: ansible
+        group: ansible
+        mode: '0644'
     
-    - name: Block for backup tasks with NFS reachable
-      block:
-        - name: Mount common media NFS share
-          mount:
-            path: "{{ media_mount_dir }}"
-            src: "{{ hostvars['NAS'].ansible_host }}:{{ nas_media_server_path }}"
-            fstype: "nfs"
-            opts: "defaults,_netdev"
-            state: "mounted"
+    - name: Check if GitHub repository is already cloned
+      stat:
+        path: "{{ homelab_srv_folder }}/.git"
+      register: git_repo_check
 
-        - name: Mount specific backup NFS share for each NUC
-          mount:
-            path: "{{ backup_mount_dir }}"
-            src: "{{ hostvars['NAS'].ansible_host }}:{{ nas_backup_server_path }}/{{ inventory_hostname }}"
-            fstype: "nfs"
-            opts: "defaults,_netdev"
-            state: "mounted"
+    - name: Clone GitHub repository
+      git:
+        repo: "{{ github_repo }}"
+        dest: "{{ homelab_srv_folder }}"
+        version: "main"
+        update: yes
+      become: false
+      environment:
+        GIT_SSH_COMMAND: "ssh -o ForwardAgent=yes"
 
-        - name: Check if BorgBackup repository exists
-          stat:
-            path: "{{ backup_mount_dir }}/{{ inventory_hostname }}/borg"
-          register: borg_repo_initialized
-        
-        - name: Initialize BorgBackup Repository if not present
-          command: borg init --encryption=repokey "{{ backup_mount_dir }}/{{ inventory_hostname }}/borg"
-          environment:
-            BORG_PASSPHRASE: "{{ borg_passphrase }}"
-          args:
-            creates: "{{ backup_mount_dir }}/{{ inventory_hostname }}/borg"
-          when: not borg_repo_initialized.stat.exists
+    - name: Set upstream branch for Git repository
+      command: git push --set-upstream origin main
+      args:
+        chdir: "{{ homelab_srv_folder }}"
+      when: git_repo_check.stat.exists == false
+      become: false
+      environment:
+        GIT_SSH_COMMAND: "ssh -o ForwardAgent=yes"
 
-        - name: Get current timestamp
-          command: date +%Y-%m-%d-%H%M%S
-          register: current_timestamp
-          changed_when: false
-        
-        - name: Create a backup with BorgBackup
-          command: borg create --stats --progress "{{ backup_mount_dir }}/{{ inventory_hostname }}/borg::{{ current_timestamp.stdout }}--srv" /srv
-          environment:
-            BORG_PASSPHRASE: "{{ borg_passphrase }}"
-        
-        - name: Prune old backups with BorgBackup
-          command: >-
-            borg prune --stats
-            --keep-daily=7
-            --keep-weekly=4
-            --keep-monthly=6
-            "{{ backup_mount_dir }}/{{ inventory_hostname }}/borg"
-          environment:
-            BORG_PASSPHRASE: "{{ borg_passphrase }}"
+- name: Check if reboot needed
+  hosts: nucs
+  become: yes
+  tasks:
+    - name: Check if a reboot is required for sysctl settings to apply
+      command: needrestart -b
+      register: reboot_required
+      ignore_errors: true
+      changed_when: reboot_required.rc == 0
+      failed_when: reboot_required.rc > 1
+      notify: Reboot System if required 
 
-      rescue:
-        - name: Notify Discord - Backup Failed
-          uri:
-            url: "{{ discord_webhook }}"
-            method: POST
-            body: '{"content": "**{{ inventory_hostname }}** backup failed! Check immediately."}'
-            body_format: json
-            headers:
-              Content-Type: "application/json"
-            status_code: [200, 204]
-          delegate_to: localhost
+    - name: Notify Discord - Reboot Required
+      uri:
+        url: "{{ discord_webhook }}"
+        method: POST
+        body: '{"content": "**{{ inventory_hostname }}** server requires a reboot. Rebooting now..."}'
+        body_format: json
+        headers:
+          Content-Type: "application/json"
+        status_code: [200, 204]
+      delegate_to: localhost
+      when: reboot_required.rc == 0 and reboot_required.changed
+
+    - name: Notify Discord - No Reboot Required
+      uri:
+        url: "{{ discord_webhook }}"
+        method: POST
+        body: '{"content": "**{{ inventory_hostname }}** server updated, no reboot required."}'
+        body_format: json
+        headers:
+          Content-Type: "application/json"
+        status_code: [200, 204]
+      delegate_to: localhost
+      when: reboot_required.rc != 0 or not reboot_required.changed
+
+  handlers:
+    - name: Reboot System if required
+      reboot:
+        test_command: uptime
+        reboot_timeout: 300
+        msg: "Reboot initiated by Ansible for applying sysctl settings."
+        pre_reboot_delay: 30
+        connect_timeout: 5
+      listen: "Reboot System if required"
+      notify: Wait for System to come back online
+
+    - name: Wait for System to come back online
+      wait_for_connection:
+        delay: 60
+        timeout: 300
+      notify: Notify Discord - Reboot Completed
+
+    - name: Notify Discord - Reboot Completed
+      uri:
+        url: "{{ discord_webhook }}"
+        method: POST
+        body: '{"content": "**{{ inventory_hostname }}** server reboot completed successfully."}'
+        body_format: json
+        headers:
+          Content-Type: "application/json"
+        status_code: [200, 204]
+      delegate_to: localhost
+
+- name: Deploy Docker Compose stack after reboot
+  hosts: nucs
+  become: yes
+  tasks:
+    - name: Deploy Docker Compose stack
+      community.docker.docker_compose:
+        project_src: "{{ homelab_srv_folder }}"
+        state: present
+        pull: yes
+        build: yes
+        recreate: smart
+        restart: yes
+      become_user: ansible
+      register: output
+
+    - name: Log Docker Compose output
+      debug:
+        msg: "{{ output }}"

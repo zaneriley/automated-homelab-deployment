@@ -1,0 +1,16 @@
+tunnel: "{{ cloudflared_tunnel_uuid }}"
+credentials-file: "{{ cloudflared_credentials_file }}"
+
+logfile: /var/log/cloudflared.log
+loglevel: info
+
+ingress:
+  - hostname: "{{ cloudflared_domains.domain1.domain }}"
+    service: http://localhost:{{ cloudflared_domains.domain1.port }}
+  - hostname: "{{ cloudflared_domains.domain2.domain }}"
+    service: http://localhost:{{ cloudflared_domains.domain2.port }}
+  - hostname: "{{ cloudflared_domains.domain3.domain }}"
+    service: http://localhost:{{ cloudflared_domains.domain3.port }}
+  - hostname: "{{ cloudflared_domains.domain4.domain }}"
+    service: http://localhost:{{ cloudflared_domains.domain4.port }}
+  - service: http_status:404
