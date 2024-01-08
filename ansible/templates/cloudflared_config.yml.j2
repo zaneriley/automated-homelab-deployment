@@ -5,6 +5,8 @@ logfile: /var/log/cloudflared.log
 loglevel: info
 
 ingress:
+  - hostname: "{{ cloudflared_domains.domain0.domain }}"
+    service: http://localhost:{{ cloudflared_domains.domain0.port }}
   - hostname: "{{ cloudflared_domains.domain1.domain }}"
     service: http://localhost:{{ cloudflared_domains.domain1.port }}
   - hostname: "{{ cloudflared_domains.domain2.domain }}"

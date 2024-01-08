@@ -9,5 +9,5 @@
         minute: "0"
         hour: "19"
         # This needs to be absolute paths, as the chron job won't be running from the same location as your playbooks (most likely)
-        job: "/usr/bin/ansible-playbook -i /srv/nucs/inventory /srv/nucs/backup.yml --vault-password-file /srv/nuc-pwd >> /var/log/backup-playbook.log 2>&1"
+        job: "/usr/bin/ansible-playbook -i /srv/nucs/ansible/inventory /srv/nucs/ansible/backup.yml --vault-password-file /srv/nuc-pwd >> /var/log/backup-playbook.log 2>&1"
         state: present

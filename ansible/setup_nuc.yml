@@ -29,13 +29,6 @@
         update_cache: yes
         cache_valid_time: 3600 # 1 hour
 
-    # - name: Ensure the dockeruser is present and has docker group
-    #   user:
-    #     name: dockeruser
-    #     groups: dockergroup
-    #     append: yes
-    #     system: no
-
     - name: Disable sleep targets
       systemd:
         name: "{{ item }}"
@@ -106,6 +99,19 @@
     cloudflared_config_dir: "/etc/cloudflared"
     cloudflared_template_dir: "{{ playbook_dir}}/templates"
   tasks:
+
+    # https://github.com/quic-go/quic-go/wiki/UDP-Buffer-Sizes
+    - name: Increase QUIC buffer sizes for high-bandwidth transfers
+      sysctl:
+        name: "{{ item.key }}"
+        value: "{{ item.value }}"
+        state: present
+        reload: yes
+      loop:
+        - { key: "net.core.rmem_max", value: "2500000" }
+        - { key: "net.core.wmem_max", value: "2500000" }
+      register: quic_buffer_size_result
+
     - name: Set tunnel_name based on inventory_hostname
       set_fact:
         tunnel_name: "{{ inventory_hostname }}"
