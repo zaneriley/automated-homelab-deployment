@@ -12,8 +12,9 @@
 inventory
 *.pem
 *.key
+*.tfvars
+cloudflare/*.txt
 
-# Ansible configuration file based on best practices
 ansible.cfg
 
 # Vault password file
@@ -24,6 +25,28 @@ host_key_checking
 
 # Folder for Roles downloaded by ansible-galaxy command
 roles/
+
+# Terraform files
+# Local Terraform directories
+.terraform/
+
+# Terraform state files
+*.tfstate
+*.tfstate.*
+
+# Override files
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# CLI configuration files
+.terraformrc
+terraform.rc
+
+# Generated files
+*.tfplan
+*.tfvars.json
 
 # Files and directories to ignore in an adjacent technologies project
 *.swp

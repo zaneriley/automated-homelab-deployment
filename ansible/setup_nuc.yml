@@ -191,6 +191,14 @@
         state: restarted
         enabled: yes
 
+    # This will pass the tunnel UUID to a file Terraform can use to populate CNAME records on cloudflare
+    - name: Save tunnel UUID to a file
+      copy:
+        content: "{{ cloudflared_tunnel_uuid }}"
+        dest: "./cloudflare/{{ tunnel_name }}-tunnel-uuid.txt"
+      delegate_to: localhost
+      when: cloudflared_tunnel_uuid is defined
+
 - name: Set up appropriate homelab docker stack
   hosts: nucs
   become: yes
