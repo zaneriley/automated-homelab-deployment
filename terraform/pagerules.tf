@@ -4,13 +4,13 @@ resource "cloudflare_page_rule" "force_ssl" {
   actions {
     always_use_https = true
   }
-  priority = 1
+  priority = 2
 }
 
 resource "cloudflare_page_rule" "www_redirect" {
   zone_id  = var.cloudflare_zone_id
   target   = "www.*.${var.cloudflare_zone_name}/*"
-  priority = 1
+  priority = 3
   status   = "active"
 
   actions {
