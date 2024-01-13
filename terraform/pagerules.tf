@@ -21,9 +21,22 @@ resource "cloudflare_page_rule" "www_redirect" {
   }
 }
 
+resource "cloudflare_page_rule" "redirect_request_to_requests" {
+  zone_id = var.cloudflare_zone_id
+  target  = "request.${var.cloudflare_zone_name}/*"
+  priority = 1
+  status = "active"
+  actions {
+    forwarding_url {
+      url = "https://${var.request_subdomain}.${var.cloudflare_zone_name}/$1"
+      status_code = 301
+    }
+  }
+}
+
 
 #### CACHE RULES EVERYTHING AROUND ME #####
-resource "cloudflare_ruleset" "bypass_cache_for_video" {
+resource "cloudflare_ruleset" "bypass_cache_for_video"  {
   zone_id     = var.cloudflare_zone_id
   name        = "Bypass cache for video"
   description = "Cache control rules for incoming requests"
@@ -39,4 +52,25 @@ resource "cloudflare_ruleset" "bypass_cache_for_video" {
       cache       = false
     }
   }
+
+  rules {
+    enabled     = true
+    expression  = "(http.host ne \"${var.kabuki_subdomain}.${var.cloudflare_zone_name}\")"
+    description = "Cache static assets like CSS, JS, and Images"
+    action      = "set_cache_settings"
+    action_parameters {
+      edge_ttl {
+        mode    = "override_origin"
+        default = 259200 # 3 days in seconds
+      }
+      browser_ttl {
+        mode    = "override_origin"
+        default = 604800 # 7 days in seconds
+      }
+      cache_key {
+        ignore_query_strings_order = true
+      }
+    }
+  }
 }
+

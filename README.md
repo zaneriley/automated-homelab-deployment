@@ -1,10 +1,14 @@
 # Homelab Infrastructure Playbook
 
-This is a set of configs designed for setting up and managing my homelab. Primarily, this is a set of Intel-based NUCS connected to a NAS. The configs do the following:
+This is a set of Ansible playbooks and Terraform configurations to automate setting up and managing my homelab environment.
 
-- Ubuntu auto-configs to initially set up machines with Ubuntu Server LTS.
-- Ansible to bring machines to the latest server state
-- Terraform to connect specific docker containers to publically accessible domain name (e.g yourhomelab.com)
+## Overview
+
+The playbooks and configs here allow you to:
+
+* Set up Ubuntu Server LTS on mini-pcs using auto-configurations. 
+* Utilize Ansible to manage server states and perform nightly backups
+* Use Terraform to connect Docker containers to publicly accessible domain names (e.g., yourhomelab.com)
 
 While this is for my personal homelab, you might find some use from this if you:
 
@@ -12,24 +16,53 @@ While this is for my personal homelab, you might find some use from this if you:
 * You had your entire homelab get deleted and feel bad about it so you tell yourself you'll automate it but then it takes forever to remember all things you did to create your server in the first place but after a while you finally get something working
 * Are interesting in learning more about idempotency, IaC, etc
 
+## Architecture
 
-## Prerequisites
+The main components are:
 
-Before you begin, ensure you have:
+- **Remote nodes**: The physical machines (like Intel NUCs) that act as servers and run your services. Each remote node should have a matching git repository where you store your docker configs. For example. I have 1 nuc that handles home automation, document tracking and photo sharing for my family. Another nuc serves as a media and game server. This is not cloning the same remote node and load balacing them.
 
-### Remote nodes
-- Hardware you want to spin up to act as servers (i.e run the docker containers). In my case, Intel NUCs.
-- Ubuntu Server 22 LTS already installed on above hardware, with a user called `ansible` and your ssh keys as authorized_keys on the NUC.
+- **Control node**: The machine you use to control the remote nodes using Ansible/Terraform. This can be any Mac or Unix machine (no Windows, sorry!)
 
-### Control node
-- [Ansible](https://docs.ansible.com/ansible/latest/installation_guide/intro_installation.html) and [Terraformd](https://developer.hashicorp.com/terraform/install) installed
-- Basic understanding of Ansible, Docker, and Unix/Linux systems.
+- **NAS**: Network attached storage for backups. We will back up each nuc's persistent docker container volumes here.
 
+## Getting Started
+
+This code is provided as is. To use this repo for your homelab:
+
+1. Install Ubuntu Server on your remote nodes. 
+
+2. On the control node:
+   - Install Ansible and Terraform 
+   - Clone this repo, or fork this and clone your own repo.
+   - Configure Ansible inventory/variables
+   - Run the Ansible playbooks to configure the remote nodes
+   - Use Terraform to connect services to your domain
+
+3. Configure recurring backups with Ansible
+
+OR, you can look through the [Ansible](/ansible) or [Terraform](/terraform) configs and do each step manually, if you think this is overkill for your setup.
+
+## Usage
+
+**Ansible Playbooks**
+
+The main Ansible playbooks are:
+
+- `setup.yml`: Initial configuration of remote nodes. This brings a new machine to the last current server state.
+- `backup.yml`: Configure backups to NAS 
+- `scheduler.yml`: Schedule recurring backups
 
 ## Setting up remote nodes
 
-If you haven't already done so, set up your hardware with an operating system like Ubuntu Server LTS. The autoconfigs in this repo can be loaded on to a USB when reformating machines to do this automatically. If you have your machines set up, read on...
+If you haven't already done so, set up your hardware with an operating system like Ubuntu Server LTS. The autoconfigs in this repo can be loaded on to a USB when reformating machines to do this automatically. If you have your machines already set up, read on...
 
+## Setting up the control node
+Clone this repository to your control node:
+```bash
+git@github.com:zaneriley/homelab-infrastructure-setup.git
+cd homelab-infrastructure-setup
+```
 
 ### Ansible
 #### Inventory Configuration
@@ -58,22 +91,41 @@ media_mount_dir="/path/to/media"
 
 Store sensitive information like passwords and SSH keys in `vault.yml`. Be sure to update this file with your specific data.
 
-#### Note if you're using a private github repo! 
 
-For using a private GitHub repository in this playbook, special attention is needed for SSH keys on your control node. You'll need to set up ssh forwarding on your control node.
+#### Note on Private GitHub Repos
 
-**Setting up SSH Key**
+If your remote nodes pull configs from a private GitHub repo, special steps are needed for SSH keys. 
 
-1. **Create an SSH Key**: If you don't have an SSH key on your control node, generate one using `ssh-keygen`.
-2. **Add SSH Key to GitHub**: Upload the generated SSH public key to your GitHub account under Settings > SSH and GPG keys.
+It is insecure to copy your SSH keys to every node. Instead, use SSH agent forwarding on the control node. When you SSH from a control node to a remote node, you'll bring your keys with you.
 
-**SSH Agent Forwarding**
+**On the Control Node**
 
-SSH Agent Forwarding is used to securely use your SSH keys from the control node on the NUCs without physically copying them.
 
-1. **Ensure SSH Agent is Running**: Start the SSH agent in the background using `eval $(ssh-agent -s)` and add your SSH key to the agent using `ssh-add`.
-2. **Test SSH Agent Forwarding**: Test the setup by running `ssh -A ansible@remote-node-ip ssh -T git@github.com`. You should see a message indicating successful authentication but no shell access on GitHub.
-3. **Configure Ansible**: Make sure your Ansible configuration supports SSH Agent Forwarding. This is often enabled by default in recent versions of Ansible.
+2. Start the SSH agent and add your key: If you don't have one, google how to make one and add it to github.
+
+    ```
+    eval $(ssh-agent -s)
+    ssh-add ~/.ssh/id_rsa
+    ```
+
+4. Test SSH agent forwarding:
+
+    ```
+    ssh -A ansible@remote_node_ip ssh -T git@github.com
+    ```
+
+    You should get a message about successful auth without a shell.
+
+5. Enable agent forwarding in Ansible config.
+
+Now Ansible can clone private repos on remote nodes using your SSH key on the control node. Keys are not copied to each node.
+
+**Do Not**
+
+- Copy keys to each node. Keep keys only on the control node.
+- Add node keys to GitHub. Use only your control node key.
+
+This is more secure than spreading keys across all nodes.
 
 ### Running Playbooks
 
