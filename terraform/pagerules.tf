@@ -10,7 +10,7 @@ resource "cloudflare_page_rule" "force_ssl" {
 resource "cloudflare_page_rule" "www_redirect" {
   zone_id  = var.cloudflare_zone_id
   target   = "www.*.${var.cloudflare_zone_name}/*"
-  priority = 3
+  priority = 1
   status   = "active"
 
   actions {
@@ -24,7 +24,7 @@ resource "cloudflare_page_rule" "www_redirect" {
 resource "cloudflare_page_rule" "redirect_request_to_requests" {
   zone_id = var.cloudflare_zone_id
   target  = "request.${var.cloudflare_zone_name}/*"
-  priority = 1
+  priority = 3
   status = "active"
   actions {
     forwarding_url {
