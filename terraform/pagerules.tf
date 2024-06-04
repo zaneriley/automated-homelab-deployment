@@ -12,7 +12,6 @@ resource "cloudflare_page_rule" "www_redirect" {
   target   = "www.*.${var.cloudflare_zone_name}/*"
   priority = 1
   status   = "active"
-
   actions {
     forwarding_url {
       status_code = 301

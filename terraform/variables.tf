@@ -43,3 +43,8 @@ variable "speedtest_subdomain" {
   description = "The subdomain name for the Speedtest server"
   type        = string
 }
+
+variable "library_subdomain" {
+  description = "The subdomain name for the libraryr"
+  type        = string
+}

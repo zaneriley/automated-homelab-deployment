@@ -1,0 +1,79 @@
+import { Callout, Steps, Step } from "nextra-theme-docs";
+
+# Managing DNS with Terraform
+
+Terraform is a powerful infrastructure as code (IaC) tool that allows you to manage your infrastructure resources, including DNS records, through declarative configuration files. In this section, we'll explore how to use Terraform to manage DNS records and page rules in Cloudflare for our automated homelab deployment.
+
+## Configuring the Terraform Provider
+
+To start managing DNS with Terraform, you need to configure the Cloudflare provider in your Terraform configuration file. Here's an example of how to set up the provider:
+
+```hcl
+terraform {
+  required_providers {
+    cloudflare = {
+      source = "cloudflare/cloudflare"
+      version = "~> 4.22"
+    }
+  }
+}
+
+provider "cloudflare" {
+  api_token = var.cloudflare_api_token
+}
+```
+
+In this example, we specify the required provider as `cloudflare` and set the version constraint to `~> 4.22`. We also configure the provider with the `cloudflare_api_token` variable, which should be securely stored and provided during the Terraform execution.
+
+## Creating DNS Records for Subdomains
+
+Terraform allows you to create DNS records for your subdomains easily. Here's an example of how to create a CNAME record for a subdomain:
+
+```hcl
+resource "cloudflare_record" "speedtest_dns" {
+  zone_id = var.cloudflare_zone_id
+  name    = var.speedtest_subdomain
+  value   = "${var.nuc1_tunnel_uuid}.cfargotunnel.com"
+  type    = "CNAME"
+  proxied = true
+}
+```
+
+In this example, we create a `cloudflare_record` resource for the `speedtest` subdomain. The `zone_id` and `name` are set using variables, and the `value` is set to the corresponding Cloudflare Tunnel UUID. The `type` is set to `"CNAME"`, and `proxied` is set to `true` to enable Cloudflare's proxy features.
+
+	You can create similar records for other subdomains by defining additional `cloudflare_record` resources with the appropriate variables and values.
+
+## Setting Up Page Rules and Caching
+
+Terraform also allows you to configure page rules and caching settings in Cloudflare. Here's an example of how to create a page rule to force HTTPS:
+
+```hcl
+resource "cloudflare_page_rule" "force_ssl" {
+  zone_id = var.cloudflare_zone_id
+  target  = "*.${var.cloudflare_zone_name}/*"
+  actions {
+    always_use_https = true
+  }
+  priority = 2
+}
+```
+
+In this example, we create a `cloudflare_page_rule` resource to force HTTPS for all subdomains. The `zone_id` is set using a variable, and the `target` is set to match all subdomains and paths. The `actions` block specifies the action to always use HTTPS, and the `priority` is set to determine the order of evaluation.
+
+<Callout type="info">
+  You can define additional page rules for tasks like redirecting requests, setting cache settings, and more. Refer to the [Cloudflare Terraform provider documentation](https://registry.terraform.io/providers/cloudflare/cloudflare/latest/docs) for more details on available actions and settings.
+</Callout>
+
+### Subdomain Configuration
+
+[Subdomain Configuration](/managing-dns-with-terraform/subdomain-configuration)
+
+### Caching and Performance Optimization
+
+[Caching and Performance Optimization](/managing-dns-with-terraform/caching-and-performance-optimization)
+
+By leveraging Terraform to manage your DNS records and page rules in Cloudflare, you can ensure consistent and automated configuration of your homelab's domain and subdomains. This enables seamless access to your homelab services while benefiting from Cloudflare's performance and security features.
+
+<Callout type="success">
+  With Terraform, you can version control your DNS configuration, easily replicate settings across environments, and collaborate with others on infrastructure changes. It provides a reliable and efficient way to manage your homelab's DNS infrastructure.
+</Callout>

@@ -1,0 +1,88 @@
+import { Callout, Steps, Step } from "nextra-theme-docs";
+
+# Setting up the Control Node
+
+Before deploying your homelab infrastructure, you need to set up a control node that will manage the deployment process. The control node is where you will run Ansible and Terraform to automate the configuration and provisioning of your remote nodes.
+
+## Prerequisites
+
+To set up the control node, ensure that you have the following:
+
+- A Unix-based operating system (e.g., Linux, macOS)
+- Git installed
+- SSH key pair generated
+
+## Installing Ansible and Terraform
+
+To install Ansible and Terraform on your control node, follow these steps:
+
+<Steps>
+
+### Step 1: Install Ansible
+
+On your control node, install Ansible using the package manager specific to your operating system. For example, on Ubuntu or Debian:
+
+```bash
+sudo apt update
+sudo apt install ansible
+```
+
+### Step 2: Install Terraform
+
+Download the appropriate Terraform package for your operating system from the official Terraform website: https://www.terraform.io/downloads.html
+
+Extract the downloaded package and move the `terraform` binary to a directory in your system's `PATH`.
+
+</Steps>
+
+## Cloning the Repository
+
+To get started, clone the homelab infrastructure repository to your control node:
+
+```bash
+git clone git@github.com:zaneriley/automated-homelab-deployment.git
+cd automated-homelab-deployment
+```
+
+The repository contains the necessary Ansible playbooks, Terraform configurations, and templates to automate your homelab deployment.
+
+## Configuring SSH Agent Forwarding
+
+SSH agent forwarding allows you to securely use your local SSH keys on the remote nodes without copying them over. This is particularly useful when cloning private GitHub repositories on the remote nodes.
+
+To enable SSH agent forwarding:
+
+<Steps>
+
+### Step 1: Start the SSH Agent
+
+On your control node, start the SSH agent and add your SSH key:
+
+```bash
+eval $(ssh-agent -s)
+ssh-add ~/.ssh/id_rsa
+```
+
+### Step 2: Configure SSH Config
+
+Create or edit the `~/.ssh/config` file on your control node and add the following lines:
+
+```
+Host *
+  ForwardAgent yes
+```
+
+This configuration enables agent forwarding for all SSH connections.
+
+</Steps>
+
+With SSH agent forwarding configured, Ansible can securely use your SSH key when connecting to the remote nodes and cloning private repositoriesi. This is more secure than spreading SSH keys across nodes.
+
+## Next Steps
+
+Now that you have set up the control node, you can proceed with configuring the Ansible inventory and vault:
+
+- [Ansible Inventory Configuration](/control-node-setup/ansible-inventory-configuration)
+- [Vault Configuration](/control-node-setup/vault-configuration)
+
+After configuring the inventory and vault, you'll be ready to deploy your homelab infrastructure using Ansible and Terraform.

@@ -22,6 +22,14 @@ resource "cloudflare_record" "speedtest_dns" {
   proxied = true
 }
 
+resource "cloudflare_record" "library_dns" {
+  zone_id = var.cloudflare_zone_id
+  name    = var.library_subdomain
+  value   = "${var.nuc1_tunnel_uuid}.cfargotunnel.com"
+  type    = "CNAME"
+  proxied = true
+}
+
 # WWW redirects
 resource "cloudflare_record" "www_kabuki_dns" {
   zone_id = var.cloudflare_zone_id
@@ -42,6 +50,14 @@ resource "cloudflare_record" "www_request_dns" {
 resource "cloudflare_record" "www_speedtest_dns" {
   zone_id = var.cloudflare_zone_id
   name    = "www.${var.speedtest_subdomain}"
+  value   = "${var.nuc1_tunnel_uuid}.cfargotunnel.com"
+  type    = "CNAME"
+  proxied = true
+}
+
+resource "cloudflare_record" "www_library_dns" {
+  zone_id = var.cloudflare_zone_id
+  name    = "www.${var.library_subdomain}"
   value   = "${var.nuc1_tunnel_uuid}.cfargotunnel.com"
   type    = "CNAME"
   proxied = true

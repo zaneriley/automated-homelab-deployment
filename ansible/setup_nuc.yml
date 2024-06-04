@@ -108,8 +108,10 @@
         state: present
         reload: yes
       loop:
-        - { key: "net.core.rmem_max", value: "2500000" }
-        - { key: "net.core.wmem_max", value: "2500000" }
+        - { key: "net.core.rmem_max", value: "3000000" }
+        - { key: "net.core.rmem_default", value: "3000000" }
+        - { key: "net.core.wmem_max", value: "3000000" }
+        - { key: "net.core.wmem_default", value: "3000000" }
       register: quic_buffer_size_result
 
     - name: Set tunnel_name based on inventory_hostname
@@ -131,6 +133,7 @@
         status_code: 200
       register: existing_tunnels
 
+    
     - name: Delete existing tunnel if it exists
       uri:
         url: "https://api.cloudflare.com/client/v4/accounts/{{ cloudflare_account_id }}/tunnels/{{ item.id }}"
@@ -141,6 +144,19 @@
         status_code: [200, 204]
       loop: "{{ existing_tunnels.json.result }}"
       when: item.name == tunnel_name
+      register: tunnel_delete_result
+      ignore_errors: yes  # A tunnel cannot be deleted if it has active connections, so we'll move on if so
+      
+    - name: Debug tunnel deletion result
+      ansible.builtin.debug:
+        var: tunnel_delete_result
+
+    - name: Check for failure due to active connections
+      fail:
+        msg: "Failed to delete tunnel due to reasons other than active connections."
+      when:
+        - tunnel_delete_result is failed
+        - "'Cannot delete tunnel because it has active connections' not in tunnel_delete_result.json.errors | map(attribute='message') | list | join(' ')"
 
     - name: Create Cloudflare tunnel
       uri:
@@ -183,7 +199,6 @@
       ansible.builtin.command:
         cmd: cloudflared service install
       become: true
-      when: cloudflared_tunnel_creation.json.result.credentials_file is defined
 
     - name: Ensure Cloudflared service is started
       ansible.builtin.service:

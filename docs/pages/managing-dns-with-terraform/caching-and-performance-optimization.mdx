@@ -1,0 +1,122 @@
+import { Callout, Steps, Step } from "nextra-theme-docs";
+
+# Caching and Performance Optimization
+
+Optimizing caching and performance settings can get us more bang for our buck in our homelab. Cloudflare gives us powerful tools to fine-tune caching behavior and improve the overall performance, taking pressure off our server.
+
+That said, we need to set some caching safeguards up so we don't store anything unnecessary on cloudflare's servers. In this section, we'll explore how to use Cloudflare rulesets in Terraform to bypass cache for specific subdomains, set cache TTLs for static assets, and configure cache key settings.
+
+## Bypassing Cache for Specific Subdomains
+
+When serving dynamic content or frequently updated resources, it's often necessary to bypass caching for certain subdomains. This ensures that users always receive the latest version of the content.
+
+<Steps>
+### Step 1
+
+Identify the subdomains that require cache bypassing. In our example, we want to bypass cache for the `photos` subdomain, which serves some video content.
+
+### Step 2
+
+Create a Cloudflare ruleset in your Terraform configuration to define the cache bypass rules:
+
+```hcl
+resource "cloudflare_ruleset" "bypass_cache_for_video"  {
+  zone_id     = var.cloudflare_zone_id
+  name        = "Bypass cache for video"
+  description = "Cache control rules for incoming requests"
+  kind        = "zone"
+  phase       = "http_request_cache_settings"
+
+  rules {
+    enabled     = true
+    expression  = "(http.host eq \"${var.photos_subdomain}.${var.cloudflare_zone_name}\")"
+    description = "Bypass cache for photo subdomain  video"
+    action      = "set_cache_settings"
+    action_parameters {
+      cache       = false
+    }
+  }
+}
+```
+
+In this ruleset, we define a rule that matches the `video` subdomain and sets `cache` to `false`, effectively bypassing caching for that specific subdomain.
+</Steps>
+
+## Setting Cache TTLs for Static Assets
+
+Static assets, such as CSS files, JavaScript files, and images, can be cached for longer durations to reduce network requests and improve page load times. Cloudflare allows you to set cache TTLs (Time-to-Live) for these assets.
+
+<Steps>
+### Step 1
+
+Identify the subdomains or paths that serve static assets. In our example, we want to cache static assets for all subdomains except the `photos` subdomain.
+
+### Step 2
+
+Extend the Cloudflare ruleset to include a rule for caching static assets:
+
+```hcl
+resource "cloudflare_ruleset" "bypass_cache_for_video"  {
+  # ...
+
+  rules {
+    enabled     = true
+    expression  = "(http.host ne \"${var.photos_subdomain}.${var.cloudflare_zone_name}\")"
+    description = "Cache static assets like CSS, JS, and Images"
+    action      = "set_cache_settings"
+    action_parameters {
+      edge_ttl {
+        mode    = "override_origin"
+        default = 259200 # 3 days in seconds
+      }
+      browser_ttl {
+        mode    = "override_origin"
+        default = 604800 # 7 days in seconds
+      }
+    }
+  }
+}
+```
+
+This rule matches all subdomains except `photos` and sets the `edge_ttl` (Cloudflare's cache) to 3 days and the `browser_ttl` (client-side cache) to 7 days. Adjust these values based on your caching requirements.
+</Steps>
+
+## Configuring Cache Key Settings
+
+Cache keys determine how Cloudflare identifies and stores cached resources. By default, Cloudflare includes query strings in the cache key, which can lead to unnecessary cache misses. You can optimize cache key settings to improve cache hit rates.
+
+<Steps>
+### Step 1
+
+Identify the subdomains or paths where you want to optimize cache key settings.
+
+### Step 2
+
+Update the Cloudflare ruleset to include cache key settings:
+
+```hcl
+resource "cloudflare_ruleset" "bypass_cache_for_video"  {
+  # ...
+
+  rules {
+    # ...
+    action_parameters {
+      # ...
+      cache_key {
+        ignore_query_strings_order = true
+      }
+    }
+  }
+}
+```
+
+By setting `ignore_query_strings_order` to `true`, Cloudflare will ignore the order of query string parameters when generating cache keys. This can help increase cache hit rates for resources with query strings.
+</Steps>
+
+<Callout>
+Caching and performance optimization settings should be carefully considered based on the specific requirements of your homelab services. Adjust the cache TTLs, bypass rules, and cache key settings according to your needs.
+</Callout>
+
+By leveraging Cloudflare rulesets in Terraform, you can get powerful caching for your public homelab services with just a little bit of configuration.
+
+For more information on managing DNS with Terraform, refer to the [Subdomain Configuration](/managing-dns-with-terraform/subdomain-configuration) section.

@@ -1,0 +1,153 @@
+import { Callout, Steps, Step } from "nextra-theme-docs";
+
+# Deploying Docker Compose Stacks
+
+In this section, we'll dive into the process of deploying Docker Compose stacks on remote nodes using Ansible. By automating the deployment of Docker Compose stacks, you can ensure consistent and reproducible environments across your homelab infrastructure.
+
+## Prerequisites
+
+Before proceeding with the deployment of Docker Compose stacks, make sure you have completed the following steps:
+
+- [Setting up the Control Node](/control-node-setup)
+- [Deploying Remote Nodes](/deploying-remote-nodes)
+
+## Cloning Docker Compose Repositories
+
+To deploy Docker Compose stacks, you'll need to have the necessary Docker Compose files and configurations stored in a version control repository, such as GitHub. Ansible will clone these repositories onto the remote nodes.
+
+<Steps>
+
+### Step 1: Configure the Ansible playbook
+
+In the `setup_nuc.yml` playbook, locate the "Set up appropriate homelab docker stack" section. This section is responsible for cloning the Docker Compose repository and deploying the stack.
+
+```yaml
+- name: Set up appropriate homelab docker stack
+  hosts: nucs
+  become: yes
+  vars:
+    ansible_ssh_common_args: '-o ForwardAgent=yes'
+  tasks:
+    - name: Check if GitHub repository is already cloned
+      stat:
+        path: "{{ homelab_srv_folder }}/.git"
+      register: git_repo_check
+
+    - name: Clone GitHub repository
+      git:
+        repo: "{{ github_repo }}"
+        dest: "{{ homelab_srv_folder }}"
+        version: "main"
+        update: yes
+      become: false
+      environment:
+        GIT_SSH_COMMAND: "ssh -o ForwardAgent=yes"
+```
+
+### Step 2: Define the GitHub repository URL
+
+In the Ansible inventory file (`inventory`), specify the GitHub repository URL for each remote node:
+
+```ini
+[nucs]
+star-caster ansible_host=192.168.11.13 ansible_user=ansible github_repo="git@github.com:your-username/homelab-media-streaming.git" homelab_srv_folder="/srv"
+spirit-gate ansible_host=192.168.11.14 ansible_user=ansible github_repo="git@github.com/your-username/homelab-household-management.git" homelab_srv_folder="/srv"
+```
+
+Make sure to replace `your-username` with your actual GitHub username and update the repository URLs accordingly.
+
+</Steps>
+
+<Callout type="info">
+Using SSH agent forwarding allows Ansible to securely use your SSH key from the control node to clone private repositories on the remote nodes without copying the key.
+</Callout>
+
+## Configuring Docker Compose Files
+
+Once the Docker Compose repository is cloned onto the remote nodes, you can configure the Docker Compose files to match your desired stack configuration.
+
+<Steps>
+
+### Step 1: Customize Docker Compose files
+
+Navigate to the cloned repository on each remote node and locate the Docker Compose files (e.g., `docker-compose.yml`). Modify the files to define the desired services, networks, volumes, and configurations for your homelab stack.
+
+Here's an example `docker-compose.yml` file:
+
+```yaml
+version: '3'
+services:
+  app:
+    image: your-app-image
+    ports:
+      - "80:80"
+    volumes:
+      - ./app:/app
+    networks:
+      - homelab
+
+networks:
+  homelab:
+    external: true
+```
+
+### Step 2: Commit and push changes
+
+After modifying the Docker Compose files, commit the changes and push them to the GitHub repository. Ansible will pull the latest changes during the deployment process.
+
+</Steps>
+
+## Starting and Managing Docker Services
+
+With the Docker Compose files configured, Ansible can start and manage the Docker services on the remote nodes.
+
+<Steps>
+
+### Step 1: Deploy the Docker Compose stack
+
+In the `setup_nuc.yml` playbook, locate the "Deploy Docker Compose stack after reboot" section. This section uses the `community.docker.docker_compose` module to deploy the stack.
+
+```yaml
+- name: Deploy Docker Compose stack after reboot
+  hosts: nucs
+  become: yes
+  tasks:
+    - name: Deploy Docker Compose stack
+      community.docker.docker_compose:
+        project_src: "{{ homelab_srv_folder }}"
+        state: present
+        pull: yes
+        build: yes
+        recreate: smart
+        restart: yes
+      become_user: ansible
+      register: output
+```
+
+### Step 2: Run the playbook
+
+Execute the `setup_nuc.yml` playbook to deploy the Docker Compose stack on the remote nodes:
+
+```bash
+ansible-playbook -i inventory setup_nuc.yml
+```
+
+Ansible will pull the latest changes from the GitHub repository, build the necessary images, and start the Docker services defined in the Docker Compose files.
+
+</Steps>
+
+With the Docker Compose stack deployed, your homelab services will be up and running on the remote nodes.
+
+## Monitoring and Logging
+
+To ensure the smooth operation of your Docker services, it's important to set up monitoring and logging. You can use tools like Prometheus, Grafana, and ELK stack to monitor the performance and collect logs from your Docker containers.
+
+Refer to the Docker Compose documentation and the respective monitoring tool's documentation for detailed instructions on configuring monitoring and logging for your homelab stack.
+
+## Conclusion
+
+Deploying Docker Compose stacks using Ansible automates the process of setting up and managing your homelab services. By leveraging version control and Ansible's automation capabilities, you can ensure consistent and reproducible deployments across your remote nodes.
+
+Remember to regularly update your Docker Compose files and re-run the Ansible playbook to keep your homelab stack up to date.
+
+Next, we'll explore how to [Configure Backups](/configuring-backups) to ensure data integrity and resilience in your homelab.

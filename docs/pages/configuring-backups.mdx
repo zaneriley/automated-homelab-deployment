@@ -1,0 +1,79 @@
+import { Callout, Steps, Step } from "nextra-theme-docs";
+
+# Configuring Backups
+
+Setting up automated backups is crucial for protecting your homelab infrastructure and ensuring data integrity. In this section, we'll cover how to configure backups using Ansible playbooks and schedule them to run regularly.
+
+## Running the Backup Playbook
+
+The `backup.yml` playbook is responsible for setting up and managing backups on the remote nodes (NUCs). It performs the following tasks:
+
+1. Includes vault variables for secure access to sensitive information.
+2. Checks if the NFS server (NAS) is reachable.
+3. Mounts the general backup NFS share for each NUC.
+4. Ensures the instance-specific backup directory exists.
+5. Initializes the BorgBackup repository if not already present.
+6. Creates a backup using BorgBackup with the current timestamp.
+7. Prunes old backups based on a defined retention policy.
+
+<Steps>
+
+### Step 1: Run the backup playbook
+
+To run the backup playbook, use the following command:
+
+```bash
+ansible-playbook -i inventory backup.yml
+```
+
+This command executes the `backup.yml` playbook using the specified inventory file.
+
+### Step 2: Verify the backup
+
+After running the playbook, check the output to ensure that the backup was created successfully. You can also log in to the NAS and verify that the backup files are present in the designated backup directory.
+
+</Steps>
+
+## Configuring Backup Schedules
+
+To automate the backup process, you can schedule the backup playbook to run at regular intervals using the `scheduler.yml` playbook. This playbook sets up a cron job on the control node to execute the backup playbook at the specified time.
+
+<Steps>
+
+### Step 1: Modify the schedule
+
+Open the `scheduler.yml` file and adjust the cron job settings according to your desired backup schedule. By default, it is set to run daily at 19:00 (7 PM).
+
+```yaml
+minute: "0"
+hour: "19"
+```
+
+### Step 2: Run the scheduler playbook
+
+Execute the `scheduler.yml` playbook to set up the cron job:
+
+```bash
+ansible-playbook scheduler.yml
+```
+
+This will configure the cron job on the control node to run the backup playbook at the specified time.
+
+</Steps>
+
+## Monitoring Backup Status
+
+It's important to monitor the status of your backups to ensure they are running successfully and to receive notifications in case of failures. The backup playbook includes a task to send a Discord notification if the backup fails.
+
+<Callout type="info">
+Make sure to configure the `discord_webhook` variable in the `vault.yml` file with your Discord webhook URL to receive backup failure notifications.
+</Callout>
+
+You can also manually check the backup logs on the remote nodes or the NAS to verify the backup status and troubleshoot any issues.
+
+By following these steps and regularly monitoring your backups, you can ensure the safety and integrity of your homelab data. Remember to test your backups periodically by restoring them to a different location to validate their reliability.
+
+For more information on configuring specific aspects of the backup process, refer to the following subsections:
+
+- [Ansible Inventory Configuration](/control-node-setup/ansible-inventory-configuration)
+- [Vault Configuration](/control-node-setup/vault-configuration)

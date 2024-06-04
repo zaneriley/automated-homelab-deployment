@@ -1,0 +1,8 @@
+{
+  "index": "Introduction",
+  "control-node-setup": "Setting up the Control Node",
+  "deploying-remote-nodes": "Deploying Remote Nodes",
+  "configuring-backups": "Configuring Backups",
+  "managing-dns-with-terraform": "Managing DNS with Terraform",
+  "conclusion": "Conclusion"
+}

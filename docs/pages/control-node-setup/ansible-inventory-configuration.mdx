@@ -1,0 +1,73 @@
+import { Callout, Steps, Step } from "nextra-theme-docs";
+
+# Ansible Inventory Configuration
+
+Configuring the Ansible inventory is a crucial step in setting up your homelab infrastructure. The inventory file defines the remote nodes (hosts) and their respective variables, allowing Ansible to manage and configure them effectively.
+
+## Defining Host Groups
+
+In the inventory file, you can organize your hosts into groups based on their roles or characteristics. For example, in a homelab setup, you might have groups like `nucs` for your mini-PCs and `nas` for your network-attached storage.
+
+Here's an example of how you can define host groups in the inventory file:
+
+```ini
+[nucs]
+nuc1 ansible_host=192.168.1.10
+nuc2 ansible_host=192.168.1.11
+
+[nas]
+nas1 ansible_host=192.168.1.20
+```
+
+In this example, we have two groups: `nucs` and `nas`. Each group contains the hostnames and their corresponding IP addresses using the `ansible_host` variable.
+
+## Setting Variables for Each Group
+
+You can also set variables specific to each host group in the inventory file. These variables can be used in your Ansible playbooks to customize the configuration based on the group.
+
+Here's an example of setting variables for the `nucs` and `nas` groups:
+
+```ini
+[nucs]
+nuc1 ansible_host=192.168.1.10 ansible_user=ansible
+nuc2 ansible_host=192.168.1.11 ansible_user=ansible
+
+[nas]
+nas1 ansible_host=192.168.1.20
+
+[nas:vars]
+backup_server_path="/mnt/backups"
+media_server_path="/mnt/media"
+
+[nucs:vars]
+ansible_ssh_private_key_file="~/.ssh/id_rsa"
+backup_mount_dir="/mnt/backups"
+media_mount_dir="/media"
+```
+
+In this example, we set the `ansible_user` variable for the `nucs` group, specifying the username Ansible should use when connecting to those hosts. We also define variables specific to the `nas` group, such as `backup_server_path` and `media_server_path`, which can be used to configure backup and media storage locations.
+
+Similarly, we set variables for the `nucs` group, including the SSH private key file (`ansible_ssh_private_key_file`) and mount directories for backups and media (`backup_mount_dir` and `media_mount_dir`).
+
+## Specifying SSH Settings
+
+To ensure smooth connectivity between the control node and the remote nodes, you can specify SSH settings in the inventory file. This includes options like the SSH private key file, SSH port, and connection timeout.
+
+Here's an example of specifying SSH settings for the `nucs` group:
+
+```ini
+[nucs:vars]
+ansible_ssh_private_key_file="~/.ssh/id_rsa"
+ansible_ssh_port=22
+ansible_ssh_timeout=30
+```
+
+In this example, we set the `ansible_ssh_private_key_file` variable to specify the path to the SSH private key file used for authentication. We also set the `ansible_ssh_port` variable to the default SSH port (22) and the `ansible_ssh_timeout` variable to 30 seconds, defining the maximum time Ansible will wait for a connection to be established.
+
+<Callout type="info">
+  Make sure to replace the example values with your actual host IPs, usernames, and file paths based on your homelab setup.
+</Callout>
+
+By properly configuring the Ansible inventory file, you lay the foundation for managing your homelab infrastructure efficiently. The inventory file allows you to define host groups, set variables, and specify SSH settings, enabling Ansible to connect to and configure your remote nodes seamlessly.
+
+Next, let's dive into [Vault Configuration](/control-node-setup/vault-configuration) to learn how to securely store sensitive information using Ansible Vault.

@@ -1,0 +1,86 @@
+import { Callout, Steps, Step } from "nextra-theme-docs";
+
+# Subdomain Configuration
+
+In this section, we'll dive into configuring subdomains for your homelab services using Terraform and Cloudflare. By defining subdomains and mapping them to the appropriate Cloudflare Tunnel UUIDs, you can easily access your services using user-friendly URLs.
+
+## Creating CNAME Records
+
+To create CNAME records for your subdomains, you'll use the `cloudflare_record` resource in your Terraform configuration. Here's an example of how to create a CNAME record for the "speedtest" subdomain:
+
+```hcl
+resource "cloudflare_record" "speedtest_dns" {
+  zone_id = var.cloudflare_zone_id
+  name    = var.speedtest_subdomain
+  value   = "${var.nuc1_tunnel_uuid}.cfargotunnel.com"
+  type    = "CNAME"
+  proxied = true
+}
+```
+
+In this example, the `name` attribute is set to the subdomain variable `var.speedtest_subdomain`, and the `value` attribute is set to the corresponding tunnel UUID `var.nuc1_tunnel_uuid` appended with `.cfargotunnel.com`.
+
+<Callout type="info">
+Make sure to define the necessary variables in your `terraform.tfvars` file, such as `cloudflare_zone_id`, `speedtest_subdomain`, and `nuc1_tunnel_uuid`.
+</Callout>
+
+## Configuring WWW Redirects
+
+To provide a better user experience, it's recommended to redirect `www` subdomains to their non-www counterparts. You can achieve this using the `cloudflare_page_rule` resource:
+
+```hcl
+resource "cloudflare_page_rule" "www_redirect" {
+  zone_id  = var.cloudflare_zone_id
+  target   = "www.*.${var.cloudflare_zone_name}/*"
+  priority = 1
+  status   = "active"
+  actions {
+    forwarding_url {
+      status_code = 301
+      url         = "https://$1.${var.cloudflare_zone_name}/$2"
+    }
+  }
+}
+```
+
+This page rule will redirect any requests to `www.subdomain.example.com` to `subdomain.example.com`, ensuring a consistent URL structure.
+
+## Mapping Subdomains to Tunnel UUIDs
+
+To map your subdomains to the appropriate Cloudflare Tunnel UUIDs, you'll use variables in your Terraform configuration. Here's an example of how to map the "speedtest" subdomain to the tunnel UUID of "nuc1":
+
+```hcl
+resource "cloudflare_record" "speedtest_dns" {
+  # ...
+  value   = "${var.nuc1_tunnel_uuid}.cfargotunnel.com"
+  # ...
+}
+```
+
+<Steps>
+### Step 1: Define Tunnel UUID Variables
+
+In your `terraform.tfvars` file, define variables for each tunnel UUID:
+
+```hcl
+nuc1_tunnel_uuid = "012345678abcdefg"
+nuc2_tunnel_uuid = "..."
+```
+
+### Step 2: Use Tunnel UUID Variables in DNS Records
+
+When creating your DNS records, reference the appropriate tunnel UUID variable:
+
+```hcl
+resource "cloudflare_record" "subdomain_dns" {
+  # ...
+  value   = "${var.nuc1_tunnel_uuid}.cfargotunnel.com"
+  # ...
+}
+```
+
+</Steps>
+
+By following this approach, you can easily map subdomains to their corresponding tunnel UUIDs and keep your configuration organized.
+
+[Next, let's explore how to optimize caching and performance for your subdomains using Cloudflare rulesets.](/managing-dns-with-terraform/caching-and-performance-optimization)

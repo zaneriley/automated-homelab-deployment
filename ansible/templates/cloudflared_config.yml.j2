@@ -5,14 +5,8 @@ logfile: /var/log/cloudflared.log
 loglevel: info
 
 ingress:
-  - hostname: "{{ cloudflared_domains.domain0.domain }}"
-    service: http://localhost:{{ cloudflared_domains.domain0.port }}
-  - hostname: "{{ cloudflared_domains.domain1.domain }}"
-    service: http://localhost:{{ cloudflared_domains.domain1.port }}
-  - hostname: "{{ cloudflared_domains.domain2.domain }}"
-    service: http://localhost:{{ cloudflared_domains.domain2.port }}
-  - hostname: "{{ cloudflared_domains.domain3.domain }}"
-    service: http://localhost:{{ cloudflared_domains.domain3.port }}
-  - hostname: "{{ cloudflared_domains.domain4.domain }}"
-    service: http://localhost:{{ cloudflared_domains.domain4.port }}
+{% for domain in cloudflared_domains.values() %}
+  - hostname: "{{ domain.domain }}"
+    service: http://localhost:{{ domain.port }}
+{% endfor %}
   - service: http_status:404

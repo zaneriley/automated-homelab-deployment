@@ -1,0 +1,57 @@
+import { Callout, Steps, Step } from "nextra-theme-docs";
+
+# Deploying Remote Nodes
+
+Once your control node is set up, it's time to deploy and configure your remote nodes using Ansible playbooks. This process involves running the setup playbook, configuring Docker and its dependencies, and connecting the nodes to the NAS for shared storage.
+
+<Steps>
+
+### Step 1: Run the setup playbook
+
+To bring your remote nodes to a working state, run the `setup_nuc.yml` playbook:
+
+```bash
+ansible-playbook -i inventory setup_nuc.yml
+```
+
+This playbook will perform the following tasks:
+
+- Install necessary packages and dependencies
+- Disable sleep targets to prevent the nodes from going into sleep mode
+- Configure TCP Congestion Control settings for optimal network performance
+
+### Step 2: Configure Docker and dependencies
+
+The setup playbook also installs and configures Docker and its dependencies on the remote nodes. It performs the following tasks:
+
+- Installs Docker and Docker Compose
+- Sets up the `dockeruser` user and grants necessary permissions
+- Installs additional packages required for the homelab infrastructure
+
+### Step 3: Connect to the NAS
+
+To enable shared storage across the remote nodes, the setup playbook connects the nodes to the NAS using NFS. It performs the following tasks:
+
+- Checks if the NFS server (NAS) is reachable
+- Creates the necessary directories for NFS mounts
+- Mounts the common media NFS share on each node
+- Mounts the node-specific backup NFS share on each node
+
+</Steps>
+
+After running the setup playbook, your remote nodes will be ready to host Docker containers and access shared storage on the NAS.
+
+## Next Steps
+
+With the remote nodes deployed and configured, you can proceed to:
+
+- [Set up Cloudflare Tunnel](/deploying-remote-nodes/cloudflare-tunnel-setup) for secure remote access to your homelab services
+- [Deploy Docker Compose stacks](/deploying-remote-nodes/deploying-docker-compose-stacks) on the remote nodes to run your desired applications and services
+
+## Additional Resources
+
+- [Ansible Inventory Configuration](/control-node-setup/ansible-inventory-configuration)
+- [Vault Configuration](/control-node-setup/vault-configuration)
+- [Configuring Backups](/configuring-backups)
+
+By following these steps and leveraging the power of Ansible, you can efficiently deploy and manage your remote nodes, setting the foundation for a robust and automated homelab infrastructure.

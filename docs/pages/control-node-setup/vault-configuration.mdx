@@ -1,0 +1,69 @@
+import { Callout, Steps, Step } from "nextra-theme-docs";
+
+# Vault Configuration
+
+Ansible Vault is a powerful feature that allows you to securely store sensitive information, such as passwords, API keys, and certificates, in encrypted files. By using Vault, you can keep your sensitive data separate from your playbooks and inventory files, ensuring that they are not exposed in plain text.
+
+## Creating the Vault File
+
+To create a new Vault file, use the `ansible-vault create` command followed by the name of the file you want to create. In this example, we'll create a file named `vault.yml`:
+
+```bash
+ansible-vault create vault.yml
+```
+
+You will be prompted to enter a password to encrypt the file. Choose a strong password and remember it, as you will need it to edit or decrypt the file later.
+
+## Encrypting Sensitive Data
+
+Once you have created the Vault file, you can add your sensitive data to it. Open the file using the `ansible-vault edit` command:
+
+```bash
+ansible-vault edit vault.yml
+```
+
+Enter the password you set earlier, and the file will open in your default text editor. Add your sensitive variables in YAML format, for example:
+
+```yaml
+---
+ansible_become_pass: your_sudo_password
+github_token: your_github_token
+```
+
+Save the file and exit the editor. The sensitive data is now encrypted and secure.
+
+## Using Vault Variables in Playbooks
+
+To use the encrypted variables in your playbooks, you need to decrypt them during runtime. Ansible provides the `--ask-vault-pass` option to prompt for the Vault password when running a playbook:
+
+<Steps>
+
+### Step 1
+
+Include the Vault variables in your playbook using the `include_vars` module:
+
+```yaml
+- name: Include Vault variables
+  include_vars:
+    file: vault.yml
+```
+
+### Step 2
+
+Run the playbook with the `--ask-vault-pass` option:
+
+```bash
+ansible-playbook your_playbook.yml --ask-vault-pass
+```
+
+</Steps>
+
+Ansible will prompt you for the Vault password and decrypt the variables during playbook execution.
+
+<Callout type="info">
+If you don't want to enter the Vault password every time you run a playbook, you can use a password file. Create a file containing the password, and use the `--vault-password-file` option followed by the path to the password file when running the playbook.
+</Callout>
+
+By using Ansible Vault, you can securely manage sensitive information in your homelab deployment. This ensures that your passwords, API keys, and other confidential data remain protected and are not inadvertently exposed in your configuration files.
+
+For more information on advanced Vault usage, such as encrypting specific variables or using multiple Vault passwords, refer to the [official Ansible Vault documentation](https://docs.ansible.com/ansible/latest/user_guide/vault.html).
