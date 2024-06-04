@@ -1,0 +1,30 @@
+# CREATE 2 USERS, a DEFAULT and an ANSIBLE
+# AND YOU NEED TO DO ansible ALL=(ALL) NOPASSWD:ALL as well!!
+
+#cloud-config
+autoinstall:
+  version: 1
+  
+  ssh:
+    install-server: true
+    # option "allow-pw" defaults to `true` if authorized_keys is empty, `false` otherwise.
+    allow-pw: false
+    authorized-keys:
+      - ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDQFCtkr3aH7iuYwmImZ5hwgAWb3L0vUuKrEOJtQdhOWds9UN922MCjPvrb/iaoZQUosxd75wKZg4tBo4btNXEjXYRhhpPX6cY8e+HcpWqfKBQP66os8BkdWMKUY/Q6ur3yCx8MOFEGEPO+qLmCwyGJTQejnqFpA8UHss9JbDamECtoGcCRUenLZMD2iIynLJa7YNmi5su3fznEA7NMrkuBC4zUSzAZnuCz5sdCxyhwjHxwSZhuWuXPTxOPEiDOEFkZ9YbB3/nuTOSczSRiG7eCV/wVpxbbep2By7MHr4O33LUmr/GjKbaGZXBgOnmg2+NqSL3ps4twRPp0G9rL0glnERgJsPkIOfbsSMUr/ZfW38vHooOdlnrS3CRzVC3ooHlCKU/ZTY2jLYMw3kkUIrQe2GjbAk8ZItbIVfl6nqwwqJAXDyoX1AW6E5WOctv8/0m72d0D7nHiwZGH7oCWLjwaB/B0Dxn9L0SEEPyFsgVoJr+iNd/WZmvq08TM6OmOXEd5jS/qJspFQzWGJu9fM9DIPVdk+MvDragi9xGtJr20fW7cAwC0A8dD1be6ZHgc1DR4WK204Y80DfiPq0Viynl+2WURcfWuGb6ih8KJ1UCnuGIXHvbEFYg6CQbHsrH06Q6GT3BFNFc9zxNSp1V+a84pBXnGDdGEEyG7HMkftZLb0w==
+      - ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDpAb1ShfMj9Jw8KlrS+eSvX/U/1hLdu0ROTG8Q/nlwy8agnKCA8+HZyp/qx5kLZTkZNvVl851rk6X5qd7XqMGdyqx9G7v/azEdyVQ5Jpm6K+Px08/FztCGI2/coLn1LwQIPAsUJ5MbUGNSCgVs8fmx+DicS+cbi7ZvAC6iTzpOvtSts8mnWbUSf9r05PnG1ZDzwG9zGDERfl4flGbHrjUYReyh/ZVS9pcmsRth+rt1c9uzJUDNljhnRxF48JYPoEZ8DaXoN2hSa3R5cFsiqdZojIrPD2IEEp9coRRwW0O/gPKKtwdzUoPAOj0UoYoNY8vkhofILIw5wYjVlVxJNDCikiwaJXe2YMTebi9A0jV1PPVDxQplJpxPO8ry4tnpzk164bIGlCPZrG8MHoRsUKB7JBfXRKJjhkzoykdHD6X0gEt04I+wmaJsdWfw2M6xZ6HnEyXXivd6gDpCmTWxGaJ9UjFQBWKbc2ghCgWtEGPR1UTgwShvJtvy1qIQluqjcj90=
+      - ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDEGpVBZTQSgdcRMIq7cloLIuQicyUuBFQGPyYEJ5KM/gZA9vCPaGy0uREii6pULmFnPO7cf/XZuLHh46ewRtRJQ+UPjgqbKFaadLLdB0+DivpMC242x4oAC9UyjvV4X18MG/jwbTF8ywLvHVSt6l9LaDTVLEdaKEiVEK1VJKNkUXLXL13E8Fz4cPhW272PjVgMYZms+VcN5MWEclAOQ8his1cNNoctPIi/X5YAQoE4Oitj96SheZQuxE8AE4I4fxp/AGdiSACPC2s/LWJRSRk4nLy/ktYr3+gLHYp5h9D+OoskiFtKoUWZHgyi1EPH27YuILPYkSqEhHfAy+PAse9OezjP+7MMWh9aLAzGFMmo08SitvDKxn6R7HbdX5Mu545dw2s2MIddaS41Z0Gn03523Vu7odMfEyD9mcuhsv04jLFviy5P5e0nlonpICK+x5mOm1SA8FaeA99oUfUNIdEn0c11FZzoCs499bKkJYYuNoSiRllIYUMAxKszuzXaiWM= root@cosmic-egg
+  
+  identity:
+    hostname: star-caster
+    realname: Ansible User
+    username: ansible
+    password: "$6$YQ/Rn0OozTQItPEv$mqEyGmHIG0GHnF6uzIsTqbSbDIGTb3zf8I6pGM/0t34u44T3ioJFN1PelCU/1.wdjWRjscX/fo9HAz8nNiyQ/0"
+
+    
+  keyboard:
+    layout: us
+  locale: en_US
+  timezone: Asia/Tokyo
+  storage:
+    layout:
+      name: direct

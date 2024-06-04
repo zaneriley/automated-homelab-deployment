@@ -1,0 +1,47 @@
+#cloud-config
+autoinstall:
+  version: 1
+
+  identity:
+    hostname: star-caster
+    username: dockeruser
+    lock_passwd: true
+    # Set shell to /usr/sbin/nologin to disable interactive logins
+    shell: /usr/sbin/nologin
+
+  user-data:
+    # No SSH authorized keys for dockeruser to prevent SSH login
+    # Ansible and ubuntu users are created with specific configurations
+    users:
+      - name: ansible
+        gecos: "Ansible Automation User"
+        primary-group: ansible
+        groups: sudo
+        shell: /bin/bash
+        sudo: "ALL=(ALL) NOPASSWD:ALL"
+        lock_passwd: true
+        uid: 1001
+        ssh-authorized-keys:
+          - ssh-rsa ANSIBLE_USER_SSH_PUBLIC_KEY
+      - name: ubuntu
+        gecos: "Human User"
+        primary-group: ubuntu
+        groups: sudo
+        shell: /bin/bash
+        sudo: "ALL=(ALL) NOPASSWD:ALL"
+        lock_passwd: true
+        uid: 1002
+        ssh-authorized-keys:
+          - ssh-rsa UBUNTU_USER_SSH_PUBLIC_KEY
+
+  ssh:
+    install-server: true
+    allow-pw: false
+
+  keyboard:
+    layout: us
+  locale: en_US
+  timezone: Asia/Tokyo
+  storage:
+    layout:
+      name: direct
