@@ -14,15 +14,27 @@ __pycache__/
 *.tfvars
 cloudflare/*.txt
 
+# SSH private keys (belt-and-suspenders — 1Password agent serves our keys, so
+# these files shouldn't exist on this machine, but if a tool ever drops them
+# don't let git silently pick them up)
+id_rsa*
+id_ed25519*
+id_ecdsa*
+id_dsa*
+*.pub
+*.pfx
+*.p12
+*.keystore
+
 # Vault password file (legacy — phase-2 migrates secrets to 1Password per ADR-0007)
 .vault_pass.txt
 host_key_checking
 
-# Master-node overrides (ADR-0007 — tracked templates only; real values gitignored)
-group_vars/master.yml
-group_vars/nucs.yml
-group_vars/nas.yml
-group_vars/pis.yml
+# Group/host vars — tracked *.example.yml templates, gitignored real values
+# (ADR-0007). Symmetric between group_vars and host_vars so new groups/hosts
+# are protected by default without needing a .gitignore edit per group.
+group_vars/*.yml
+!group_vars/*.example.yml
 host_vars/*.yml
 !host_vars/*.example.yml
 

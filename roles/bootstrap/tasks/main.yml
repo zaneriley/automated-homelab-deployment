@@ -54,14 +54,18 @@
   ansible.builtin.command:
     cmd: "/opt/homebrew/bin/brew bundle check --file={{ bootstrap_brewfile_path }}"
   register: bootstrap_bundle_check
-  changed_when: bootstrap_bundle_check.rc != 0
-  failed_when: false
+  # brew bundle check rc semantics:
+  #   0 = all dependencies satisfied
+  #   1 = drift (missing formulae / casks / taps)
+  #   anything else = error (network, broken brew, etc.) — surface, don't mask
+  changed_when: bootstrap_bundle_check.rc == 1
+  failed_when: bootstrap_bundle_check.rc not in [0, 1]
   check_mode: false
   tags: [bootstrap, homebrew]
 
 - name: Brewfile — reconcile (install missing formulae / casks / taps)
   ansible.builtin.command:
     cmd: "/opt/homebrew/bin/brew bundle --file={{ bootstrap_brewfile_path }} --no-upgrade"
-  when: bootstrap_bundle_check.rc != 0
+  when: bootstrap_bundle_check.rc == 1
   changed_when: true
   tags: [bootstrap, homebrew]
