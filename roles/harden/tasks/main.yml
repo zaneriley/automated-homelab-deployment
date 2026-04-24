@@ -27,6 +27,30 @@
   notify: Restart Dock
   tags: [harden, apple_cruft, harden_apple_cruft_disable]
 
+# Siri and Apple Intelligence launch-agent disables (user scope).
+# Pattern: read current disabled-list, then conditionally disable each
+# label that isn't already on the list. This gives honest idempotency —
+# the disable command only runs when there's actual state to change.
+
+- name: "Harden/L1 — read current launchctl disabled-services (user scope)"
+  ansible.builtin.command:
+    cmd: "launchctl print-disabled gui/{{ ansible_user_uid }}"
+  register: harden_launchctl_disabled
+  changed_when: false
+  check_mode: false
+  when: harden_apple_cruft_disable
+  tags: [harden, apple_cruft, harden_apple_cruft_disable, launchctl]
+
+- name: "Harden/L1 — disable Siri + Apple Intelligence user launch agents"
+  ansible.builtin.command:
+    cmd: "launchctl disable gui/{{ ansible_user_uid }}/{{ item }}"
+  loop: "{{ harden_launchctl_disable_labels }}"
+  when:
+    - harden_apple_cruft_disable
+    - ('"' ~ item ~ '" => disabled') not in harden_launchctl_disabled.stdout
+  changed_when: true
+  tags: [harden, apple_cruft, harden_apple_cruft_disable, launchctl]
+
 # ---------- Layer 2: Delete bundles ----------
 # Default OFF. Rehearse in Tart VM before flipping. Adds land in follow-up commits
 # and are gated by harden_apple_cruft_delete_bundles.

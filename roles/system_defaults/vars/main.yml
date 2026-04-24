@@ -49,7 +49,7 @@ system_defaults_entries:
   - domain: com.apple.dock
     key: autohide-delay
     type: float
-    value: 0
+    value: 0.0
   - domain: com.apple.dock
     key: autohide-time-modifier
     type: float
@@ -59,3 +59,18 @@ system_defaults_entries:
     key: RichText
     type: int
     value: 0
+  # Siri — disable the assistant + hide menu-bar entry + disable "Hey Siri"
+  # (Launch-agent disables for Siri/AI live in roles/harden; this is the
+  # user-preference side.)
+  - domain: com.apple.assistant.support
+    key: "Assistant Enabled"
+    type: bool
+    value: false
+  - domain: com.apple.Siri
+    key: StatusMenuVisible
+    type: bool
+    value: false
+  - domain: com.apple.Siri
+    key: VoiceTriggerUserEnabled
+    type: bool
+    value: false

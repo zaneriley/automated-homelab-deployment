@@ -1,0 +1,23 @@
+---
+# User-scope (gui/<uid>) launch agents to disable under
+# harden_apple_cruft_disable. These are Siri and Apple Intelligence
+# supporting daemons.
+#
+# Disabling via `launchctl disable` is persistent — the daemon won't
+# launch on next login. We deliberately do NOT `launchctl bootout` the
+# currently-running instances in this role; a logout/login cycle handles
+# that cleanly without the bootout idempotency dance.
+
+harden_launchctl_disable_labels:
+  # Siri — com.apple.Siri.agent is already disabled on fresh macOS Tahoe
+  - com.apple.assistantd
+  - com.apple.siriactionsd
+  - com.apple.siri.context.service
+
+  # Apple Intelligence stack
+  - com.apple.generativeexperiencesd
+  - com.apple.intelligenceplatformd
+  - com.apple.intelligenceflowd
+  - com.apple.intelligencetasksd
+  - com.apple.intelligencecontextd
+  - com.apple.callintelligenced

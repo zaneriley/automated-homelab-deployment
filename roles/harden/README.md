@@ -12,9 +12,15 @@ Three-layer de-Apple work per ADR-0003.
 
 ## Layer 1 — what's implemented now
 
-Just Dock emptying: `persistent-apps` and `persistent-others` both become empty arrays, a handler runs `killall Dock` so the change takes effect without a reboot.
+1. **Dock emptying** — `persistent-apps` and `persistent-others` become empty arrays; a handler runs `killall Dock` so the change takes effect immediately.
+2. **Siri / Apple Intelligence launch-agent disables** (user scope, `gui/<uid>`) — persistent `launchctl disable` for 9 daemons across Siri and the AI stack (list in `vars/main.yml`). The Dock handler is separate from launchctl; a logout/login cycle actually stops the running instances.
+3. **Siri user-preference disables** — the user-preference side (Siri menu-bar entry, "Hey Siri," main assistant switch) lives in `roles/system_defaults/vars/main.yml` under the Siri block.
 
-Additional layer 1 work (launch-agent disables via `launchctl disable`, iCloud sync toggles) is added in follow-up commits — each earns its place via verified behavior change and honest idempotency per Gate A.
+Not yet in the role, tracked in `docs/manual-steps.md` because they're genuinely GUI-only:
+
+- Full iCloud sign-out (Apple requires an interactive password + Find-My confirmation)
+- iCloud Drive Desktop/Documents folder sync toggle
+- Apple Intelligence System Settings toggle (the authoritative opt-out; our launchctl disables are a supporting measure)
 
 ## Toggle
 

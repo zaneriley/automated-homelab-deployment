@@ -16,4 +16,8 @@
   loop: "{{ system_defaults_entries }}"
   loop_control:
     label: "{{ item.domain }} {{ item.key }}"
+  notify: Restart Dock   # reach for harden role's handler; safe across roles
+                        # in the same play — Ansible handler scope is play-wide.
+                        # Dock restart is cheap, so we pay for it on any
+                        # osx_defaults change rather than split the loop.
   tags: [system_defaults]
