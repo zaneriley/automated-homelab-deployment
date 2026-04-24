@@ -17,6 +17,13 @@ Format:
 
 ---
 
+## ADR-0011: Commit-message claim discipline — "idempotency proof" is earned, not structural
+**Date:** 2026-04-25
+**Status:** Accepted
+**Decision:** Commit messages state what changed and what was verified. Claims like "Gate A verified," "idempotency proof," or "first real slice" are only used when the commit materially exercises the claim — real tasks managing real state, independently verified by an out-of-band read (`ls`, `defaults read`, `launchctl print`, `brew bundle check`, a visible observation). When a commit is infrastructure, scaffolding, or documentation, the message names it as such — `docs:`, `chore:`, `scaffolding,` `placeholder` — without borrowing the language of substantive work.
+**Alternatives:** Keep the pattern of reporting `ok=N, changed=0` as "idempotency proof" on every commit regardless of whether real state was under management.
+**Rationale:** A 2026-04-25 peer review flagged `cc379ff feat: scaffold master-node harness` for claiming "check → apply → check all report changed=0 (idempotency proof)" when every task in the play was a debug `no-op` — `changed=0` was structurally guaranteed, not earned. That is exactly the ceremony-labeled-as-progress pattern this repo is trying to avoid. The ceremony-vs-real-work framework lives in the global `~/.agents/AGENTS.md` § 3 (symlinked to `~/.claude/CLAUDE.md`); this ADR mirrors the machine-scoped rule into this repo so it's locally ratified. The `cc379ff` commit message is left in place as archeology — the lesson is captured here and in the global AGENTS.md, not by rewriting history.
+
 ## ADR-0010: Conventional Commits; no `Co-Authored-By` trailers
 **Date:** 2026-04-24
 **Status:** Accepted
