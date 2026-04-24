@@ -1,0 +1,61 @@
+---
+# Data-driven osx_defaults list.
+# Adding a new setting = one entry in this list. No new task block.
+# Each entry must be safe, reversible, and honest (community.general.osx_defaults
+# reads the current value before writing — ADR-0004).
+#
+# Sources: mathiasbynens/dotfiles, drduh/macOS-Security-and-Privacy-Guide.
+
+system_defaults_entries:
+  # Screenshots
+  - domain: com.apple.screencapture
+    key: location
+    type: string
+    value: "{{ ansible_env.HOME }}/Screenshots"
+  - domain: com.apple.screencapture
+    key: type
+    type: string
+    value: png
+  - domain: com.apple.screencapture
+    key: disable-shadow
+    type: bool
+    value: true
+  # Finder — show more, hide less
+  - domain: NSGlobalDomain
+    key: AppleShowAllExtensions
+    type: bool
+    value: true
+  - domain: com.apple.finder
+    key: ShowStatusBar
+    type: bool
+    value: true
+  - domain: com.apple.finder
+    key: ShowPathbar
+    type: bool
+    value: true
+  - domain: com.apple.finder
+    key: _FXSortFoldersFirst
+    type: bool
+    value: true
+  - domain: com.apple.finder
+    key: FXDefaultSearchScope
+    type: string
+    value: SCcf   # search the current folder by default, not the whole Mac
+  # Dock — autohide, no delay, fast reveal
+  - domain: com.apple.dock
+    key: autohide
+    type: bool
+    value: true
+  - domain: com.apple.dock
+    key: autohide-delay
+    type: float
+    value: 0
+  - domain: com.apple.dock
+    key: autohide-time-modifier
+    type: float
+    value: 0.5
+  # TextEdit — plain text by default
+  - domain: com.apple.TextEdit
+    key: RichText
+    type: int
+    value: 0

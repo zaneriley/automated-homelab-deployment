@@ -1,8 +1,19 @@
 ---
 # roles/system_defaults/tasks/main.yml
-# Placeholder — real tasks (data-driven osx_defaults loop per ADR-0004)
-# land in a follow-up commit.
-- name: System_defaults role — skeleton placeholder
-  ansible.builtin.debug:
-    msg: "system_defaults role skeleton; real tasks follow in a later commit."
-  tags: [system_defaults, skeleton]
+# Data-driven osx_defaults loop (ADR-0004). Each entry in
+# system_defaults_entries (vars/main.yml) becomes one osx_defaults task.
+# The module reads the current plist value before writing and only
+# reports changed when it actually changed — this is how we earn the
+# "second make check = 0 changes" correctness witness (ADR-0009).
+
+- name: Apply managed defaults
+  community.general.osx_defaults:
+    domain: "{{ item.domain }}"
+    key: "{{ item.key }}"
+    type: "{{ item.type }}"
+    value: "{{ item.value }}"
+    state: present
+  loop: "{{ system_defaults_entries }}"
+  loop_control:
+    label: "{{ item.domain }} {{ item.key }}"
+  tags: [system_defaults]
