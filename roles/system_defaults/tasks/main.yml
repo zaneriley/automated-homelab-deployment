@@ -1,0 +1,8 @@
+---
+# roles/system_defaults/tasks/main.yml
+# Placeholder — real tasks (data-driven osx_defaults loop per ADR-0004)
+# land in a follow-up commit.
+- name: System_defaults role — skeleton placeholder
+  ansible.builtin.debug:
+    msg: "system_defaults role skeleton; real tasks follow in a later commit."
+  tags: [system_defaults, skeleton]

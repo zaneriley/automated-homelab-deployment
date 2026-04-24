@@ -1,0 +1,9 @@
+---
+# roles/bootstrap/tasks/main.yml
+# Placeholder — real tasks (preflight checks, foundation dirs, Homebrew
+# reconciliation via Brewfile) land in a follow-up commit. Kept as a
+# syntactically valid no-op so `make check` and `make apply` both pass.
+- name: Bootstrap role — skeleton placeholder
+  ansible.builtin.debug:
+    msg: "bootstrap role skeleton; real tasks follow in a later commit."
+  tags: [bootstrap, skeleton]

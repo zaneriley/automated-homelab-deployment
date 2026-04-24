@@ -1,0 +1,28 @@
+---
+# Top-level playbook. Routes roles to host groups.
+# Apple-specific roles run only on `master` (ADR-0008, AGENTS.md §1 item 4).
+
+- name: Master node (Mac Studio)
+  hosts: master
+  gather_facts: true
+  roles:
+    - bootstrap
+    - system_defaults
+    - shell_env
+    - harden
+    - workstation_tools
+
+- name: NUC fleet (placeholder — legacy NUC playbook still lives in ansible/setup_nuc.yml until the phase-2 refactor)
+  hosts: nucs
+  gather_facts: false
+  tasks: []
+
+- name: NAS (placeholder)
+  hosts: nas
+  gather_facts: false
+  tasks: []
+
+- name: Raspberry Pis (placeholder)
+  hosts: pis
+  gather_facts: false
+  tasks: []

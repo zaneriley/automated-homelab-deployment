@@ -1,0 +1,25 @@
+---
+# Master-node config template. Copy to group_vars/master.yml (gitignored)
+# and adjust. Real secrets are resolved via community.general.onepassword
+# lookup — this file should NOT contain any secrets.
+
+# === De-Apple layers (ADR-0003) ===
+# Each layer has a distinct blast radius. Enable incrementally.
+apple_cruft_disable: true              # Layer 1: launch agents, Dock, iCloud sync toggles. Safe.
+apple_cruft_delete_bundles: false      # Layer 2: rm -rf consumer /Applications/*.app. Rehearse in Tart VM first.
+apple_cruft_block_telemetry: false     # Layer 3: /etc/hosts null-route of Apple analytics. Can break softwareupdate.
+
+# === Git identity ===
+git_user_name: "Zane Riley"
+git_user_email: "zaneriley@gmail.com"
+
+# === Foundation directories (bootstrap role creates these) ===
+foundation_dirs:
+  - "{{ ansible_env.HOME }}/lab"
+  - "{{ ansible_env.HOME }}/repos"
+  - "{{ ansible_env.HOME }}/models"
+  - "{{ ansible_env.HOME }}/notes"
+  - "{{ ansible_env.HOME }}/Screenshots"
+
+# === Brewfile path (relative to the playbook) ===
+brewfile_path: "{{ playbook_dir }}/Brewfile"

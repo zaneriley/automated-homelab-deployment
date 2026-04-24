@@ -1,0 +1,8 @@
+---
+# roles/shell_env/tasks/main.yml
+# Placeholder — real tasks (Ghostty config, Zed config, dotfile symlinks)
+# land in a follow-up commit.
+- name: Shell_env role — skeleton placeholder
+  ansible.builtin.debug:
+    msg: "shell_env role skeleton; real tasks follow in a later commit."
+  tags: [shell_env, skeleton]

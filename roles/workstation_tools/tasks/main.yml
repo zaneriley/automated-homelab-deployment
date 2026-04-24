@@ -1,0 +1,9 @@
+---
+# roles/workstation_tools/tasks/main.yml
+# Placeholder — real tasks (Colima on-demand config, AeroSpace config,
+# 1Password desktop+CLI adoption/verify, gh + dev tooling verify)
+# land in a follow-up commit.
+- name: Workstation_tools role — skeleton placeholder
+  ansible.builtin.debug:
+    msg: "workstation_tools role skeleton; real tasks follow in a later commit."
+  tags: [workstation_tools, skeleton]

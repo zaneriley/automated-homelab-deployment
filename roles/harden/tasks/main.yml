@@ -1,0 +1,10 @@
+---
+# roles/harden/tasks/main.yml
+# Placeholder — real tasks (3-layer apple_cruft tagged blocks, LuLu,
+# ssh_server hardening) land in follow-up commits. Destructive layers
+# (layer 2 delete_bundles, layer 3 block_telemetry) are gated per-layer
+# per ADR-0003 and default to off in group_vars/master.example.yml.
+- name: Harden role — skeleton placeholder
+  ansible.builtin.debug:
+    msg: "harden role skeleton; real tasks follow in a later commit."
+  tags: [harden, skeleton]

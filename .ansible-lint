@@ -1,0 +1,8 @@
+---
+# Legacy ansible/*.yml files (setup_nuc.yml, backup.yml, scheduler.yml, vault.yml)
+# are frozen in place until the phase-2 refactor into NUC-scoped roles
+# (AGENTS.md Backlog → Later). Exclude until then.
+exclude_paths:
+  - ansible/
+  - .tmp/
+  - docs/
