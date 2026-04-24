@@ -5,9 +5,9 @@
 
 # === De-Apple layers (ADR-0003) ===
 # Each layer has a distinct blast radius. Enable incrementally.
-apple_cruft_disable: true              # Layer 1: launch agents, Dock, iCloud sync toggles. Safe.
-apple_cruft_delete_bundles: false      # Layer 2: rm -rf consumer /Applications/*.app. Rehearse in Tart VM first.
-apple_cruft_block_telemetry: false     # Layer 3: /etc/hosts null-route of Apple analytics. Can break softwareupdate.
+harden_apple_cruft_disable: true              # Layer 1: launch agents, Dock, iCloud sync toggles. Safe.
+harden_apple_cruft_delete_bundles: false      # Layer 2: rm -rf consumer /Applications/*.app. Rehearse in Tart VM first.
+harden_apple_cruft_block_telemetry: false     # Layer 3: /etc/hosts null-route of Apple analytics. Can break softwareupdate.
 
 # === Git identity ===
 git_user_name: "Zane Riley"

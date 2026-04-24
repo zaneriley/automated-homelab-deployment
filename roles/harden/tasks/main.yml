@@ -1,10 +1,36 @@
 ---
 # roles/harden/tasks/main.yml
-# Placeholder — real tasks (3-layer apple_cruft tagged blocks, LuLu,
-# ssh_server hardening) land in follow-up commits. Destructive layers
-# (layer 2 delete_bundles, layer 3 block_telemetry) are gated per-layer
-# per ADR-0003 and default to off in group_vars/master.example.yml.
-- name: Harden role — skeleton placeholder
-  ansible.builtin.debug:
-    msg: "harden role skeleton; real tasks follow in a later commit."
-  tags: [harden, skeleton]
+# Three-layer de-Apple work (ADR-0003). Each layer is gated by a variable
+# from defaults/main.yml. Layers 2 and 3 default OFF.
+
+# ---------- Layer 1: Disable ----------
+
+- name: "Harden/L1 — empty Dock persistent-apps"
+  community.general.osx_defaults:
+    domain: com.apple.dock
+    key: persistent-apps
+    type: array
+    value: []
+    state: present
+  when: harden_apple_cruft_disable
+  notify: Restart Dock
+  tags: [harden, apple_cruft, harden_apple_cruft_disable]
+
+- name: "Harden/L1 — empty Dock persistent-others"
+  community.general.osx_defaults:
+    domain: com.apple.dock
+    key: persistent-others
+    type: array
+    value: []
+    state: present
+  when: harden_apple_cruft_disable
+  notify: Restart Dock
+  tags: [harden, apple_cruft, harden_apple_cruft_disable]
+
+# ---------- Layer 2: Delete bundles ----------
+# Default OFF. Rehearse in Tart VM before flipping. Adds land in follow-up commits
+# and are gated by harden_apple_cruft_delete_bundles.
+
+# ---------- Layer 3: Block telemetry ----------
+# Default OFF. Can break softwareupdate. Adds land in follow-up commits
+# and are gated by harden_apple_cruft_block_telemetry.

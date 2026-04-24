@@ -71,11 +71,11 @@ Format:
 **Status:** Accepted
 **Decision:** De-Apple work is split into three layers by blast radius, implemented as tagged blocks inside the single `harden` role (not three separate roles):
 
-1. `apple_cruft_disable` — disable launch agents, empty Dock, iCloud sync toggles. Default **ON**.
-2. `apple_cruft_delete_bundles` — `rm -rf` user-removable `/Applications/*.app` bundles (iWork, GarageBand, iMovie). Default **OFF**.
-3. `apple_cruft_block_telemetry` — `/etc/hosts` null-route of Apple analytics domains. Default **OFF**.
+1. `harden_apple_cruft_disable` — disable launch agents, empty Dock, iCloud sync toggles. Default **ON**.
+2. `harden_apple_cruft_delete_bundles` — `rm -rf` user-removable `/Applications/*.app` bundles (iWork, GarageBand, iMovie). Default **OFF**.
+3. `harden_apple_cruft_block_telemetry` — `/etc/hosts` null-route of Apple analytics domains. Default **OFF**.
 
-**Alternatives:** Single "nuclear" toggle; always-nuclear; three separate roles (`apple_cruft_disable`, `apple_cruft_delete_bundles`, `apple_cruft_block_telemetry`).
+**Alternatives:** Single "nuclear" toggle; always-nuclear; three separate roles (`harden_apple_cruft_disable`, `harden_apple_cruft_delete_bundles`, `harden_apple_cruft_block_telemetry`).
 **Rationale:** Each layer has a distinct blast radius and recovery cost. Tagged blocks inside `harden` let us run specific layers via `--tags` without splitting into separate roles (consistent with the lifecycle-aligned role count from ADR-0008). Defaults recommend layer 1 universally, layer 2 only after Tart VM rehearsal, layer 3 only for users willing to troubleshoot `softwareupdate` failures.
 
 ## ADR-0002: Ansible, not nix-darwin / chezmoi / pyinfra / shell

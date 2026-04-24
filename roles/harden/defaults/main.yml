@@ -1,0 +1,14 @@
+---
+# Harden role defaults (ADR-0003 — three layers, blast radius increases with layer).
+# Override via group_vars/master.yml.
+
+# Layer 1 — disable: launch agents, Dock cleanup, iCloud sync toggles where scriptable.
+harden_apple_cruft_disable: true
+
+# Layer 2 — delete consumer /Applications/*.app bundles (iWork, GarageBand, iMovie).
+# Default OFF. Rehearse in a Tart VM before flipping.
+harden_apple_cruft_delete_bundles: false
+
+# Layer 3 — /etc/hosts null-route Apple analytics domains.
+# Default OFF. Can break softwareupdate.
+harden_apple_cruft_block_telemetry: false
