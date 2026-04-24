@@ -1,8 +1,36 @@
 ---
 # roles/shell_env/tasks/main.yml
-# Placeholder — real tasks (Ghostty config, Zed config, dotfile symlinks)
-# land in a follow-up commit.
-- name: Shell_env role — skeleton placeholder
-  ansible.builtin.debug:
-    msg: "shell_env role skeleton; real tasks follow in a later commit."
-  tags: [shell_env, skeleton]
+# Ensures the editor / terminal configs under ~/.config/ are symlinks
+# to the canonical dotfiles at <repo>/dotfiles/. Symlink pattern
+# (not templating) so edits to the config files land in git directly,
+# no render-then-apply loop.
+
+- name: "Shell_env —ensure ~/.config/ghostty exists"
+  ansible.builtin.file:
+    path: "{{ ansible_env.HOME }}/.config/ghostty"
+    state: directory
+    mode: "0755"
+  tags: [shell_env, ghostty]
+
+- name: "Shell_env —ensure ~/.config/zed exists"
+  ansible.builtin.file:
+    path: "{{ ansible_env.HOME }}/.config/zed"
+    state: directory
+    mode: "0755"
+  tags: [shell_env, zed]
+
+- name: "Shell_env —symlink ~/.config/ghostty/config to repo dotfile"
+  ansible.builtin.file:
+    src: "{{ playbook_dir }}/dotfiles/ghostty/config"
+    dest: "{{ ansible_env.HOME }}/.config/ghostty/config"
+    state: link
+    force: true   # overwrite a pre-existing regular file (fresh install has none)
+  tags: [shell_env, ghostty]
+
+- name: "Shell_env —symlink ~/.config/zed/settings.json to repo dotfile"
+  ansible.builtin.file:
+    src: "{{ playbook_dir }}/dotfiles/zed/settings.json"
+    dest: "{{ ansible_env.HOME }}/.config/zed/settings.json"
+    state: link
+    force: true
+  tags: [shell_env, zed]

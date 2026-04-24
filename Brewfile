@@ -27,3 +27,6 @@ cask "zen"
 cask "1password"
 cask "1password-cli"
 cask "nikitabobko/tap/aerospace"
+
+# === Fonts ===
+cask "font-jetbrains-mono-nerd-font"

@@ -63,6 +63,16 @@ If you ever want to remove `/System/Applications/*` bundles, do it manually via 
 
 ---
 
+## Zed — install Melange theme extension
+
+Zed's built-in theme list does not include Melange; it's delivered via a theme extension. On first Zed launch:
+
+1. Open **Zed.app**.
+2. **Cmd+Shift+X** → search "Melange" → **Install**.
+3. Zed will immediately honor `"theme": "Melange Dark"` from `settings.json` (the `shell_env` role sets this).
+
+Until the extension is installed, Zed silently falls back to its default theme.
+
 ## iMessage / Messages
 
 If you use Messages for LLM-agent tooling (per AGENTS.md §1 item 1), sign into iMessage interactively:
