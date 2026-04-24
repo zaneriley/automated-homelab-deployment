@@ -1,9 +1,67 @@
 ---
 # roles/bootstrap/tasks/main.yml
-# Placeholder — real tasks (preflight checks, foundation dirs, Homebrew
-# reconciliation via Brewfile) land in a follow-up commit. Kept as a
-# syntactically valid no-op so `make check` and `make apply` both pass.
-- name: Bootstrap role — skeleton placeholder
-  ansible.builtin.debug:
-    msg: "bootstrap role skeleton; real tasks follow in a later commit."
-  tags: [bootstrap, skeleton]
+# Preflight gates, foundation dirs, Brewfile reconciliation.
+# Every task is either a pure read (preflight) or uses an honestly-
+# idempotent module (ansible.builtin.file) / is gated by drift detection
+# (brew bundle check → brew bundle install).
+
+# ---------- Preflight ----------
+
+- name: Preflight — verify Xcode Command Line Tools present
+  ansible.builtin.command:
+    cmd: xcode-select -p
+  register: bootstrap_clt_probe
+  changed_when: false
+  check_mode: false
+  failed_when: bootstrap_clt_probe.rc != 0
+  tags: [bootstrap, preflight]
+
+- name: Preflight — verify Homebrew installed at /opt/homebrew
+  ansible.builtin.stat:
+    path: /opt/homebrew/bin/brew
+  register: bootstrap_brew_stat
+  check_mode: false
+  tags: [bootstrap, preflight]
+
+- name: Preflight — fail if Homebrew missing
+  ansible.builtin.fail:
+    msg: "Homebrew not found at /opt/homebrew/bin/brew. Run ./bootstrap.sh first."
+  when: not bootstrap_brew_stat.stat.exists
+  tags: [bootstrap, preflight]
+
+- name: Preflight — verify current user is in the admin group
+  ansible.builtin.command:
+    cmd: "dseditgroup -o checkmember -m {{ ansible_env.USER }} admin"
+  register: bootstrap_admin_probe
+  changed_when: false
+  check_mode: false
+  failed_when: bootstrap_admin_probe.rc != 0
+  tags: [bootstrap, preflight]
+
+# ---------- Foundation ----------
+
+- name: Foundation — ensure canonical directories exist
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: "0755"
+  loop: "{{ bootstrap_foundation_dirs }}"
+  tags: [bootstrap, foundation]
+
+# ---------- Homebrew bundle ----------
+
+- name: Brewfile — detect drift
+  ansible.builtin.command:
+    cmd: "/opt/homebrew/bin/brew bundle check --file={{ bootstrap_brewfile_path }}"
+  register: bootstrap_bundle_check
+  changed_when: bootstrap_bundle_check.rc != 0
+  failed_when: false
+  check_mode: false
+  tags: [bootstrap, homebrew]
+
+- name: Brewfile — reconcile (install missing formulae / casks / taps)
+  ansible.builtin.command:
+    cmd: "/opt/homebrew/bin/brew bundle --file={{ bootstrap_brewfile_path }} --no-upgrade"
+  when: bootstrap_bundle_check.rc != 0
+  changed_when: true
+  tags: [bootstrap, homebrew]

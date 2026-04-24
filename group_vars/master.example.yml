@@ -13,13 +13,9 @@ apple_cruft_block_telemetry: false     # Layer 3: /etc/hosts null-route of Apple
 git_user_name: "Zane Riley"
 git_user_email: "zaneriley@gmail.com"
 
-# === Foundation directories (bootstrap role creates these) ===
-foundation_dirs:
-  - "{{ ansible_env.HOME }}/lab"
-  - "{{ ansible_env.HOME }}/repos"
-  - "{{ ansible_env.HOME }}/models"
-  - "{{ ansible_env.HOME }}/notes"
-  - "{{ ansible_env.HOME }}/Screenshots"
-
-# === Brewfile path (relative to the playbook) ===
-brewfile_path: "{{ playbook_dir }}/Brewfile"
+# === Role defaults live in roles/<role>/defaults/main.yml. ===
+# Override here only when you need host-specific tweaks, e.g.:
+# bootstrap_foundation_dirs:
+#   - "{{ ansible_env.HOME }}/lab"
+#   - "{{ ansible_env.HOME }}/repos"
+#   ...

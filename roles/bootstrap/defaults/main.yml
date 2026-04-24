@@ -1,0 +1,12 @@
+---
+# Defaults for the bootstrap role.
+# Override in group_vars/master.yml or host_vars/mac-studio.yml if needed.
+
+bootstrap_foundation_dirs:
+  - "{{ ansible_env.HOME }}/lab"
+  - "{{ ansible_env.HOME }}/repos"
+  - "{{ ansible_env.HOME }}/models"
+  - "{{ ansible_env.HOME }}/notes"
+  - "{{ ansible_env.HOME }}/Screenshots"
+
+bootstrap_brewfile_path: "{{ playbook_dir }}/Brewfile"
