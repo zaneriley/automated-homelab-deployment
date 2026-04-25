@@ -13,34 +13,42 @@ Commit convention: [Conventional Commits 1.0.0](https://www.conventionalcommits.
 
 
 ### Bootstrap
-- Preflight, foundation dirs, Brewfile reconciliation ([`2f25e1d`](https://github.com/zaneriley/automated-homelab-deployment/commit/2f25e1df2a9d7cb881cfb51ca073618bec7bbab4))
+- Preflight, foundation dirs, Brewfile reconciliation ([`2986c19`](https://github.com/zaneriley/automated-homelab-deployment/commit/2986c19fc16fd09c34aab3062fd702cd51906b73))
 
 
 ### System defaults
-- 12 baseline macOS defaults via osx_defaults ([`78b4f5f`](https://github.com/zaneriley/automated-homelab-deployment/commit/78b4f5f2371fdf637d26a24dd414ef87000af93f))
+- 12 baseline macOS defaults via osx_defaults ([`127fc40`](https://github.com/zaneriley/automated-homelab-deployment/commit/127fc40fa967073cdcd645bfe8d3aed53fa71eff))
 
 
 ### Shell env
-- Ghostty + Zed configs, JetBrainsMono Nerd Font Mono, Melange Dark ([`461dbc7`](https://github.com/zaneriley/automated-homelab-deployment/commit/461dbc7f936e65dc164dfe41d53e8c0da6247d38))
+- Ghostty + Zed configs, JetBrainsMono Nerd Font Mono, Melange Dark ([`30485c3`](https://github.com/zaneriley/automated-homelab-deployment/commit/30485c37aa5ffcae46e5df5b301451fef8daa11b))
 
 
 ### Harden
-- Layer 1 — empty the Dock (first real de-Apple slice) ([`17e3379`](https://github.com/zaneriley/automated-homelab-deployment/commit/17e33794fb4203fe2fefb69d5b5dc6d38d0e20c8))
-- Disable Siri + Apple Intelligence user launch agents ([`89b1fa9`](https://github.com/zaneriley/automated-homelab-deployment/commit/89b1fa997e4fcc3a223d0835a9689095fd837694))
-- Layer 2 mechanism + Tart rehearsal harness ([`87fe4ae`](https://github.com/zaneriley/automated-homelab-deployment/commit/87fe4ae34bf4e4d450d8e95d7362af226616a10d))
-- Layer 1 expansion (Calendar/Photos/Maps/etc.) + harness hardening ([`b21ee5f`](https://github.com/zaneriley/automated-homelab-deployment/commit/b21ee5fb7b946e9ed7fb5dcd3996e3889df8d45e))
+- Layer 1 — empty the Dock (first real de-Apple slice) ([`bcc67c0`](https://github.com/zaneriley/automated-homelab-deployment/commit/bcc67c01d657f12840d6a6d70c9a794a8caae472))
+- Disable Siri + Apple Intelligence user launch agents ([`ef7a39a`](https://github.com/zaneriley/automated-homelab-deployment/commit/ef7a39a28df8dbd2749c052fdd74c4afff787e1c))
+- Layer 2 mechanism + Tart rehearsal harness ([`a728c12`](https://github.com/zaneriley/automated-homelab-deployment/commit/a728c12d69a420aad4d1c6bce202dd8ecd0b6242))
+- Layer 1 expansion (Calendar/Photos/Maps/etc.) + harness hardening ([`0bbf095`](https://github.com/zaneriley/automated-homelab-deployment/commit/0bbf095cc5db2c1158b03c10165254ad0be7c36c))
+
+
+### Workstation tools
+- Dark theme, AeroSpace config, Zen default browser ([`e3abb55`](https://github.com/zaneriley/automated-homelab-deployment/commit/e3abb5510b123d23fc6ce02c2b628575a5a72471))
 
 
 ### Harness
-- Scaffold master-node harness (Makefile, inventory, 5 role skeletons) ([`cc379ff`](https://github.com/zaneriley/automated-homelab-deployment/commit/cc379ff2857ecbc617b99749b3e47ab6e7883093))
-- Peer-review hardening (brew bundle semantics, bootstrap.sh, interpreter pin, gitignore) ([`1a5d1d0`](https://github.com/zaneriley/automated-homelab-deployment/commit/1a5d1d085c91fd6be62b050045e9d3e02da88e2b))
+- Scaffold master-node harness (Makefile, inventory, 5 role skeletons) ([`1308614`](https://github.com/zaneriley/automated-homelab-deployment/commit/1308614702818cc4829fc687f69f5b20cf3d6935))
+- Peer-review hardening (brew bundle semantics, bootstrap.sh, interpreter pin, gitignore) ([`cae340d`](https://github.com/zaneriley/automated-homelab-deployment/commit/cae340d9fa42a452a032eebad973b2e206d6f07f))
+- Add deterministic CHANGELOG pipeline (ADR-0012) ([`02ca51c`](https://github.com/zaneriley/automated-homelab-deployment/commit/02ca51c193b93170882d692cf2be7bc2d61368b5))
 
 
 ### Decisions (ADRs)
-- ADR-0011 — commit-message claim discipline ([`1bc4434`](https://github.com/zaneriley/automated-homelab-deployment/commit/1bc443406d4ab7f26b2312f489bba7afcd626046))
+- ADR-0011 — commit-message claim discipline ([`ecc9871`](https://github.com/zaneriley/automated-homelab-deployment/commit/ecc9871af23a0620f1fc5dc881a7a27b07ba503a))
 
 
 ### Documentation
-- Add AGENTS.md and ADRS.md ([`fd9ecc7`](https://github.com/zaneriley/automated-homelab-deployment/commit/fd9ecc773dc0c38503c10658638f12f9a52bc0ed))
+- Add AGENTS.md and ADRS.md ([`0a44aae`](https://github.com/zaneriley/automated-homelab-deployment/commit/0a44aaee9534ded66b812210f694906f9c5b03a3))
+- Capture I/A in AGENTS.md §3 + ADR-0013 + 8 per-directory READMEs ([`4274917`](https://github.com/zaneriley/automated-homelab-deployment/commit/42749176d88b1d80a3e39c5471b20e41f83e4115))
+- AGENTS.md §3 + ADRS.md cross-doc updates after IA reorg moves ([`da7f4fe`](https://github.com/zaneriley/automated-homelab-deployment/commit/da7f4feb900e97575312434cf0aba8ca5b9d8aff))
+- Annotate backup architecture pivot — Mac as central cron, NAS subsystem ([`f297298`](https://github.com/zaneriley/automated-homelab-deployment/commit/f29729882303fc653378ef17bb7d7a8318c97214))
 
 

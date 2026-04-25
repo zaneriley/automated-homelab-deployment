@@ -33,8 +33,11 @@ host_key_checking
 # Group/host vars — tracked *.example.yml templates, gitignored real values
 # (ADR-0007). Symmetric between group_vars and host_vars so new groups/hosts
 # are protected by default without needing a .gitignore edit per group.
+# Exception: group_vars/all.yml is tracked — it carries cross-group, non-secret
+# defaults; secrets never go here (resolve via community.general.onepassword).
 group_vars/*.yml
 !group_vars/*.example.yml
+!group_vars/all.yml
 host_vars/*.yml
 !host_vars/*.example.yml
 

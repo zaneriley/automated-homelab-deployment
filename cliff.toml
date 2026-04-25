@@ -58,7 +58,7 @@ commit_parsers = [
   { message = "^(feat|fix|perf|refactor)\\(system_defaults\\)", group = "<!--2-->System defaults" },
   { message = "^(feat|fix|perf|refactor)\\(shell_env\\)", group = "<!--3-->Shell env" },
   { message = "^(feat|fix|perf|refactor)\\(harden\\)", group = "<!--4-->Harden" },
-  { message = "^(feat|fix|perf|refactor)\\(workstation_tools\\)", group = "<!--5-->Workstation tools" },
+  { message = "^(feat|fix|perf|refactor)\\((workstation_tools|workstation)\\)", group = "<!--5-->Workstation tools" },
   { message = "^(feat|fix|perf|refactor)", group = "<!--6-->Harness" },
   { message = "^docs\\(adr\\)", group = "<!--7-->Decisions (ADRs)" },
   { message = "^docs", group = "<!--8-->Documentation" },
