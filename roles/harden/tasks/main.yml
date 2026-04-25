@@ -41,13 +41,28 @@
   when: harden_apple_cruft_disable | bool
   tags: [harden, apple_cruft, harden_apple_cruft_disable, launchctl]
 
+# Parse the print-disabled output once into a list of already-disabled
+# labels via regex_findall. Pre-fix this was a substring search of the
+# raw multi-line stdout (`'"X" => disabled' not in stdout`); a single
+# whitespace change in Apple's output format would silently break the
+# match, causing the disable command to re-run for every label and
+# falsifying the ADR-0009 second-`make check`-zero witness.
+- name: "Harden/L1 — extract already-disabled labels"
+  ansible.builtin.set_fact:
+    harden_launchctl_already_disabled: >-
+      {{ harden_launchctl_disabled.stdout
+         | default('')
+         | regex_findall('"([^"]+)"\s*=>\s*disabled') }}
+  when: harden_apple_cruft_disable | bool
+  tags: [harden, apple_cruft, harden_apple_cruft_disable, launchctl]
+
 - name: "Harden/L1 — disable Siri + Apple Intelligence user launch agents"
   ansible.builtin.command:
     cmd: "launchctl disable gui/{{ ansible_user_uid }}/{{ item }}"
   loop: "{{ harden_launchctl_disable_labels }}"
   when:
     - harden_apple_cruft_disable | bool
-    - ('"' ~ item ~ '" => disabled') not in harden_launchctl_disabled.stdout
+    - item not in harden_launchctl_already_disabled
   changed_when: true
   tags: [harden, apple_cruft, harden_apple_cruft_disable, launchctl]
 
