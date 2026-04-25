@@ -127,7 +127,8 @@ The harness is "working" when:
 ## 5. References
 
 - **[`ADRS.md`](./ADRS.md)** — decision log; read this to understand *why* a thing is the way it is. Append-only. Supersede old entries rather than delete.
-- **[`Makefile`](./Makefile)** — `make help` for the full target list. Primary targets: `lint`, `check`, `apply`, `smoke`.
+- **[`CHANGELOG.md`](./CHANGELOG.md)** — timeline of what landed when, grouped by role scope. Generated from Conventional Commits by `git-cliff` (see [ADR-0012](./ADRS.md)). Third orientation leg: ADRS explains *why*, AGENTS defines *what should be true*, CHANGELOG records *when*. Regenerate with `make changelog`; verify with `make changelog-check`. Never hand-edit.
+- **[`Makefile`](./Makefile)** — `make help` for the full target list. Primary targets: `lint`, `check`, `apply`, `smoke`, `changelog`, `changelog-check`, `release`.
 - **[`inventory/hosts.yml`](./inventory/hosts.yml)** — host groups (`master`, `nucs`, `nas`, `pis`).
 - **[`group_vars/master.example.yml`](./group_vars/master.example.yml)** — the tracked template. Copy to `master.yml` (gitignored) for real values.
 - **Related repos** (not under this harness): `homelab-media-streaming` (standalone Plex NUC), `homelab-household-management` (dedicated NUC — currently empty, populated later), `homelab.family` (V1 legacy — forensic only), `obsidian-notes` (local notes vault).

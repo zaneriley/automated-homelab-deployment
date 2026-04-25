@@ -3,7 +3,7 @@ SHELL := /bin/bash
 
 PLAYBOOK := site.yml
 
-.PHONY: help lint syntax check apply smoke rehearse rehearse-base
+.PHONY: help lint syntax check apply smoke rehearse rehearse-base changelog changelog-check release
 
 help: ## Show this help
 	@awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make \033[36m<target>\033[0m\n\nTargets:\n"} /^[a-zA-Z_-]+:.*?##/ { printf "  \033[36m%-10s\033[0m %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
@@ -35,3 +35,22 @@ rehearse-base: ## One-time setup: pull vanilla Tart image, bake CLT into tahoe-c
 	@command -v /opt/homebrew/bin/tart >/dev/null || { echo "tart not installed — brew bundle"; exit 1; }
 	@command -v /opt/homebrew/bin/sshpass >/dev/null || { echo "sshpass not installed — brew bundle"; exit 1; }
 	scripts/bake-rehearse-base.sh
+
+changelog: ## Regenerate CHANGELOG.md from git history (deterministic; ADR-0012)
+	@command -v git-cliff >/dev/null || { echo "git-cliff not installed — run ./bootstrap.sh or brew install git-cliff"; exit 1; }
+	git-cliff -o CHANGELOG.md
+
+changelog-check: ## Verify CHANGELOG.md matches git-cliff output (fails on drift; CI gate)
+	@command -v git-cliff >/dev/null || { echo "git-cliff not installed — run ./bootstrap.sh or brew install git-cliff"; exit 1; }
+	@git-cliff -o /tmp/CHANGELOG.expected.md
+	@diff -q CHANGELOG.md /tmp/CHANGELOG.expected.md >/dev/null || { echo "CHANGELOG.md is stale — run 'make changelog'"; exit 1; }
+	@echo "CHANGELOG.md is up-to-date."
+
+release: ## Tag + regenerate CHANGELOG.md. Usage: make release TAG=v0.1.0
+	@command -v git-cliff >/dev/null || { echo "git-cliff not installed — run ./bootstrap.sh or brew install git-cliff"; exit 1; }
+	@if [ -z "$(TAG)" ]; then echo "Usage: make release TAG=vX.Y.Z"; exit 1; fi
+	git tag -a $(TAG) -m "Release $(TAG)"
+	git-cliff --tag $(TAG) -o CHANGELOG.md
+	@echo ""
+	@echo "Tag $(TAG) created locally. CHANGELOG.md regenerated."
+	@echo "Next: review 'git diff HEAD -- CHANGELOG.md', commit, then 'git push --follow-tags'."

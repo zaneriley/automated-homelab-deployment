@@ -10,6 +10,7 @@ tap "nikitabobko/tap"   # source for the AeroSpace cask
 brew "ansible"
 brew "ansible-lint"
 brew "yamllint"
+brew "git-cliff"                        # CHANGELOG.md generator (ADR-0012)
 
 # === Dev tooling ===
 brew "gh"
