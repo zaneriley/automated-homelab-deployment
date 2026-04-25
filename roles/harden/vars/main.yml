@@ -21,3 +21,15 @@ harden_launchctl_disable_labels:
   - com.apple.intelligencetasksd
   - com.apple.intelligencecontextd
   - com.apple.callintelligenced
+
+# Layer 2 — user-removable consumer Apple app bundles in /Applications/
+# (NOT /System/Applications/, which is SIP-protected and out of scope per
+# ADR-0005). Apple ID + Mac App Store will offer reinstalls — this role
+# is the steady-state authority, not a one-shot. Default OFF; rehearse
+# in Tart before flipping (ADR-0003).
+harden_apple_cruft_bundles:
+  - GarageBand.app
+  - iMovie.app
+  - Keynote.app
+  - Numbers.app
+  - Pages.app

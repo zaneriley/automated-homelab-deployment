@@ -10,6 +10,18 @@ Three-layer de-Apple work per ADR-0003.
 | `harden_apple_cruft_delete_bundles` | false | `rm -rf` user-removable consumer `/Applications/*.app` (iWork, GarageBand, iMovie, etc.) | High: apps gone; reinstall via App Store |
 | `harden_apple_cruft_block_telemetry` | false | `/etc/hosts` null-route Apple analytics domains | High: can break `softwareupdate` |
 
+## Layer 2 — what's implemented now (default OFF)
+
+When `harden_apple_cruft_delete_bundles: true` is set in `group_vars/master.yml`:
+
+`/Applications/{GarageBand,iMovie,Keynote,Numbers,Pages}.app` are removed via `ansible.builtin.file: state=absent` with `become: true`. The list lives in `vars/main.yml` (`harden_apple_cruft_bundles`).
+
+These five are the only consumer Apple bundles that ship under `/Applications/` on a clean install — Music/TV/News/Maps/Stocks/Photos/Podcasts/etc. are all under `/System/Applications/` and are **deliberately out of scope** per ADR-0005 (SIP stays on; system bundles are not scripted). For those, see `docs/manual-steps.md` (Recovery-mode procedure, expressly opt-in and manual).
+
+`state: absent` is honestly idempotent: first apply removes, second reports unchanged. Mac App Store will offer to reinstall any bundle bought under Z's Apple ID — accept the loop: re-apply removes again, no special handling.
+
+**Rehearsal:** apply Layer 2 against a Tart VM via `scripts/rehearse-tart.sh` before flipping the toggle on the real Mac (ADR-0003). The vanilla VM image doesn't ship with iLife/iWork, so the rehearsal harness plants empty `.app` directories as fixtures — enough to exercise `state: absent` semantics and idempotency.
+
 ## Layer 1 — what's implemented now
 
 1. **Dock emptying** — `persistent-apps` and `persistent-others` become empty arrays; a handler runs `killall Dock` so the change takes effect immediately.

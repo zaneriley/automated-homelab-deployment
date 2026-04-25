@@ -30,3 +30,10 @@ cask "nikitabobko/tap/aerospace"
 
 # === Fonts ===
 cask "font-jetbrains-mono-nerd-font"
+
+# === Rehearsal infrastructure (used by scripts/rehearse-tart.sh) ===
+# Tart: macOS VM runner (Apple Silicon native, Apache-2.0).
+# sshpass: password-auth helper for the rehearsal VM (cirruslabs vanilla
+# image is admin/admin only; we don't bake keys into the base image).
+brew "cirruslabs/cli/tart"
+brew "hudochenkov/sshpass/sshpass"

@@ -12,7 +12,7 @@
     type: array
     value: []
     state: present
-  when: harden_apple_cruft_disable
+  when: harden_apple_cruft_disable | bool
   notify: Restart Dock
   tags: [harden, apple_cruft, harden_apple_cruft_disable]
 
@@ -23,7 +23,7 @@
     type: array
     value: []
     state: present
-  when: harden_apple_cruft_disable
+  when: harden_apple_cruft_disable | bool
   notify: Restart Dock
   tags: [harden, apple_cruft, harden_apple_cruft_disable]
 
@@ -38,7 +38,7 @@
   register: harden_launchctl_disabled
   changed_when: false
   check_mode: false
-  when: harden_apple_cruft_disable
+  when: harden_apple_cruft_disable | bool
   tags: [harden, apple_cruft, harden_apple_cruft_disable, launchctl]
 
 - name: "Harden/L1 — disable Siri + Apple Intelligence user launch agents"
@@ -46,14 +46,27 @@
     cmd: "launchctl disable gui/{{ ansible_user_uid }}/{{ item }}"
   loop: "{{ harden_launchctl_disable_labels }}"
   when:
-    - harden_apple_cruft_disable
+    - harden_apple_cruft_disable | bool
     - ('"' ~ item ~ '" => disabled') not in harden_launchctl_disabled.stdout
   changed_when: true
   tags: [harden, apple_cruft, harden_apple_cruft_disable, launchctl]
 
 # ---------- Layer 2: Delete bundles ----------
-# Default OFF. Rehearse in Tart VM before flipping. Adds land in follow-up commits
-# and are gated by harden_apple_cruft_delete_bundles.
+# Default OFF. Rehearse in Tart VM before flipping (ADR-0003).
+# Targets are user-removable consumer apps that Apple ships under
+# /Applications/ — never /System/Applications/ (ADR-0005).
+# state=absent is honestly idempotent: removes the bundle if present,
+# reports unchanged if already gone. No `command: rm -rf` (ADR-0004
+# spirit — prefer the native module).
+
+- name: "Harden/L2 — delete user-removable consumer Apple app bundles"
+  ansible.builtin.file:
+    path: "/Applications/{{ item }}"
+    state: absent
+  loop: "{{ harden_apple_cruft_bundles }}"
+  when: harden_apple_cruft_delete_bundles | bool
+  become: true
+  tags: [harden, apple_cruft, harden_apple_cruft_delete_bundles]
 
 # ---------- Layer 3: Block telemetry ----------
 # Default OFF. Can break softwareupdate. Adds land in follow-up commits
