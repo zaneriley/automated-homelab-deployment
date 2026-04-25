@@ -1,0 +1,26 @@
+---
+# --- LEGACY (V1, pre-Mac-Studio) --- DO NOT EDIT ---
+# Parity with the new role-shaped harness has NOT been verified.
+# Moved to legacy/ansible/ per ADR-0013 — path-correct on paper, NOT yet runtime-verified.
+# At next NUC run, verify template:/vars_files: paths + cloud-init/ refs (was ubuntu-server/).
+# See legacy/ansible/README.md for the parity protocol.
+- name: Configure Backup Cron Job
+  hosts: localhost
+  become: yes
+  tasks:
+    - name: Schedule Ansible backup playbook
+      cron:
+        name: "Backup Job"
+        minute: "0"
+        hour: "19"
+        # This needs to be absolute paths, as the chron job won't be running from the same location as your playbooks (most likely)
+        # ─── PATH WARNING (ADR-0013) ────────────────────────────────────────
+        # The repo paths moved from `ansible/` → `legacy/ansible/` in commit
+        # cycle 2026-04-25. The /srv/nucs/ paths below assume the NUC pulls
+        # this repo to `/srv/nucs/<repo>/...` — if the NUC has been re-pulled
+        # post-move, these paths are now stale and need to become
+        # `/srv/nucs/<repo>/legacy/ansible/...`. Z's NUCs are intentionally
+        # NOT being re-pulled right now (working as intended); fix this when
+        # they do.
+        job: "/usr/bin/ansible-playbook -i /srv/nucs/ansible/inventory /srv/nucs/ansible/backup.yml --vault-password-file /srv/nuc-pwd >> /var/log/backup-playbook.log 2>&1"
+        state: present

@@ -2,11 +2,11 @@
 
 Operator-facing prose. Not contract (that's `AGENTS.md`), not decisions (that's `ADRS.md`), not timeline (that's `CHANGELOG.md`).
 
-## Layout (target)
+## Layout
 
 ```
 docs/
-├── runbooks/        # canonical human procedures (manual steps, troubleshooting how-tos)
+├── runbooks/        # canonical human procedures (manual-steps.md + future how-tos)
 └── site/            # Nextra-built static documentation site
 ```
 
@@ -20,22 +20,17 @@ docs/
 - Future "how do I…" pages → `runbooks/<task>.md`
 - The published static site (Nextra) → `site/`
 
-## Current state
-
-- `manual-steps.md` is now at `docs/runbooks/manual-steps.md` (canonical location per ADR-0013).
-- The Nextra site files (`package.json`, `next.config.js`, `pages/`, etc.) are still at `docs/` root.
-- The Nextra → `docs/site/` move is pending (sequencing in AGENTS.md § 3).
-
-To run the existing Nextra dev server (until the move):
+## Running the Nextra dev server
 
 ```sh
-curl -fsSL https://bun.sh/install | bash   # install bun (macOS / Linux / WSL)
+cd docs/site
+curl -fsSL https://bun.sh/install | bash   # one-time, if bun isn't installed
 bun install
 bun dev
 ```
 
-Edit `pages/*.mdx` to see changes.
+Edit `site/pages/*.mdx` to see changes.
 
 ## Site publishing — open question
 
-Verify whether the Nextra site is still being published anywhere before investing in the move. If it is not, the Nextra app may be retired entirely (move to `legacy/`). Tracked as an open question in ADR-0013.
+Verify whether the Nextra site is still being published anywhere (CI hook, Vercel, GitHub Pages). If not, it may be retired entirely (move to `legacy/docs-site/`). Tracked as an open question in ADR-0013.

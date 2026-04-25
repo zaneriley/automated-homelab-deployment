@@ -12,7 +12,7 @@
     - harden
     - workstation_tools
 
-- name: NUC fleet (placeholder — legacy NUC playbook still lives in ansible/setup_nuc.yml until the phase-2 refactor)
+- name: NUC fleet (placeholder — legacy NUC playbook still lives in legacy/ansible/setup_nuc.yml until the phase-2 refactor)
   hosts: nucs
   gather_facts: false
   tasks: []

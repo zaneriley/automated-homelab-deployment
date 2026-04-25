@@ -53,7 +53,7 @@ Workstation heterogeneity (multiple OS families across the fleet) does not multi
 - Per-host `host_vars/` files are thin (overrides only). Heavy logic lives in roles and group_vars.
 - `terraform/<vendor>/` absorbs new vendors with one `mkdir`. No re-org churn.
 - Eight per-directory READMEs land alongside this ADR to keep the local conventions discoverable.
-- Two of the five planned moves landed in this commit cycle (`terraform/*.tf` → `terraform/cloudflare/*.tf`; `docs/manual-steps.md` → `docs/runbooks/manual-steps.md`). The remaining three (`ansible/` → `legacy/ansible/`, `ubuntu-server/` → `cloud-init/`, Nextra files → `docs/site/`) are tracked in AGENTS.md § 3 — gated by parity verification (first two) or by the "is the site still published?" question (third). Legacy files now carry in-file ADR-0013 + parity warnings to complement the directory-level READMEs.
+- All five planned moves landed across this commit cycle: `terraform/*.tf` → `terraform/cloudflare/*.tf` (`a2d0dcd`); `docs/manual-steps.md` → `docs/runbooks/manual-steps.md` (`e458f29`); legacy in-file annotations (`520ca0e`); and the three relocations (`ansible/` → `legacy/ansible/`, `ubuntu-server/` → `cloud-init/`, Nextra files → `docs/site/`). The legacy moves landed *without* completing the parity-verification protocol — Z's NUCs/Pis are working as intended and re-running the legacy plays just to satisfy a paper protocol was higher cost than benefit. Legacy file headers and `legacy/ansible/README.md` enumerate what to verify *when* the plays are next run; the protocol lives there for that day.
 
 ## ADR-0012: `CHANGELOG.md` is a deterministic artifact; no LLM-generated changelogs
 **Date:** 2026-04-25
@@ -112,7 +112,7 @@ A 2026-04-25 `/literature` brief (`.tmp/2026-04-25-versioning-infra-playbooks/li
 ## ADR-0007: `community.general.onepassword` lookup for new-work secrets
 **Date:** 2026-04-24
 **Status:** Accepted
-**Decision:** New secret lookups in playbooks resolve via `{{ lookup('community.general.onepassword', '<path>') }}` against the 1Password desktop app's CLI integration (Touch ID at task-run time). The existing `ansible/vault.yml` is frozen in place until migrated.
+**Decision:** New secret lookups in playbooks resolve via `{{ lookup('community.general.onepassword', '<path>') }}` against the 1Password desktop app's CLI integration (Touch ID at task-run time). The existing `legacy/ansible/vault.yml` is frozen in place until migrated.
 **Alternatives:** Continue Ansible Vault; wrap `ansible-playbook` in `op run`; shell out to `op read` per task.
 **Rationale:** Vault requires a password at runtime with no clean integration with the human's auth surface. `op run` wraps the whole playbook in a single env scope (pollution risk). The lookup plugin resolves per-task, composes with normal Ansible vars, and uses the desktop app's already-authenticated session (biometric). Migration of existing `vault.yml` is a separate, tracked task in the backlog.
 

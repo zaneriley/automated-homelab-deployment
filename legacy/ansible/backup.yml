@@ -1,8 +1,9 @@
 ---
 # --- LEGACY (V1, pre-Mac-Studio) --- DO NOT EDIT ---
 # Parity with the new role-shaped harness has NOT been verified.
-# This file is the parity oracle; planned move to legacy/ansible/ per ADR-0013.
-# Verification protocol: see ansible/README.md.
+# Moved to legacy/ansible/ per ADR-0013 — path-correct on paper, NOT yet runtime-verified.
+# At next NUC run, verify template:/vars_files: paths + cloud-init/ refs (was ubuntu-server/).
+# See legacy/ansible/README.md for the parity protocol.
 
 - name: Set up backups on NUCs
   hosts: nucs

@@ -48,25 +48,28 @@ The directory tree, with one-line purpose for each top-level entry. Local conven
 | `dotfiles/` | Ansible role payload (NOT chezmoi/stow); symlinked into `~/.config/<tool>/` by `shell_env` | `dotfiles/README.md` |
 | `scripts/` | Operator helpers (Tart rehearsal today); prefer role-internal for new ones | `scripts/README.md` |
 | `terraform/<vendor>/` | Per-vendor declarative state (Cloudflare today; Tailscale next) | `terraform/README.md` |
-| `cloud-init/` *(currently `ubuntu-server/`; rename pending)* | Linux-fleet provisioning seed; cloud-init user-data + meta-data | `ubuntu-server/README.md` |
+| `cloud-init/` | Linux-fleet provisioning seed; cloud-init user-data + meta-data | `cloud-init/README.md` |
 | `docs/runbooks/` | Human procedures (canonical) — `manual-steps.md`, future how-tos | `docs/README.md` |
 | `docs/site/` | Nextra documentation site (publishes from `runbooks/`, doesn't duplicate) | `docs/README.md` |
-| `legacy/` *(rename of `ansible/`; pending parity verification)* | Frozen pre-Mac-Studio content | `ansible/README.md` |
+| `legacy/ansible/` | Frozen pre-Mac-Studio NUC playbooks; parity not yet runtime-verified | `legacy/ansible/README.md` |
 
 **Locked structural decisions:** ADR-0013 (this layout), ADR-0008 (5 lifecycle-aligned roles), ADR-0001 (single Ansible repo for the whole fleet), ADR-0012 (orientation triad at root).
 
 **Why this shape:** function-named roles + facts-based OS dispatch is the dominant pattern in heterogeneous-fleet IaC repos. See **ADR-0013** for the convergence trace (5 IA proposals → multi-OS `/literature` brief → 5 peer reviews).
 
-**Pending moves** (gated):
-- `ansible/` → `legacy/ansible/` — gated by the parity-verification protocol (ADR-0013); legacy files now carry in-file ADR-0013 + parity warnings (`520ca0e`)
-- `ubuntu-server/` → `cloud-init/` — gated alongside the legacy move; legacy files annotated as above
-- Nextra files (`docs/{package.json,next.config.js,pages/,…}`) → `docs/site/` — gated by "is the Nextra site still being published anywhere?"
-
-**Completed moves:**
+**Completed moves** (in commit-order):
 - `terraform/*.tf` → `terraform/cloudflare/*.tf` (`a2d0dcd`)
 - `docs/manual-steps.md` → `docs/runbooks/manual-steps.md` (`e458f29`)
+- Legacy in-file annotations on `ansible/*` and `ubuntu-server/*` (`520ca0e`)
+- `ansible/` → `legacy/ansible/`, `ubuntu-server/` → `cloud-init/`, Nextra files → `docs/site/` (this commit cycle); legacy file headers updated to reflect "moved here, NOT yet runtime-verified"
 
-The READMEs reflect the current state; pending moves are signposted in the affected directories' READMEs.
+**Open question** (not gating any further IA move):
+- Is the Nextra site still being published anywhere (CI / Vercel / Pages)? If no → retire to `legacy/docs-site/`; if yes → leave at `docs/site/`. Tracked in ADR-0013.
+
+**Runtime verification** (deferred, intentional):
+The legacy NUC playbooks at `legacy/ansible/` are path-correct on paper but not runtime-verified — Z's NUCs and Pis are working as-is and we're not re-running the legacy plays right now. Each legacy file's header (and `legacy/ansible/README.md`) lists what to verify when they are next executed.
+
+The READMEs reflect the current state.
 
 ---
 
@@ -83,11 +86,11 @@ Order matters. Do them in order. Cross off as done.
 
 **Next**
 - [ ] Obsidian vault → Linear-esque local backlog (frontmatter schema, Dataview dashboards, (redacted))
-- [ ] Migrate `ansible/setup_nuc.yml` secrets from Ansible Vault → `onepassword` lookup
+- [ ] Migrate `legacy/ansible/setup_nuc.yml` secrets from Ansible Vault → `onepassword` lookup
 
 **Later**
 - [ ] Populate `homelab-household-management` repo for a dedicated NUC (Immich, Home Assistant)
-- [ ] Refactor `ansible/setup_nuc.yml` into NUC-scoped roles in this repo
+- [ ] Refactor `legacy/ansible/setup_nuc.yml` into NUC-scoped roles in this repo
 - [ ] V1 legacy `homelab.family` forensic cleanup (missing Home Assistant container, orphaned AppDaemon, MQTT / DNS clarifications)
 - [ ] DoH Pi for internal DNS (candidates: Technitium, Pi-hole+Unbound, AdGuard Home)
 - [ ] Tailscale — add when there's a fleet host that needs remote reach; decision-ready (Tailscale over Headscale) but not installed
