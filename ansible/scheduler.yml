@@ -1,4 +1,8 @@
 ---
+# --- LEGACY (V1, pre-Mac-Studio) --- DO NOT EDIT ---
+# Parity with the new role-shaped harness has NOT been verified.
+# This file is the parity oracle; planned move to legacy/ansible/ per ADR-0013.
+# Verification protocol: see ansible/README.md.
 - name: Configure Backup Cron Job
   hosts: localhost
   become: yes
