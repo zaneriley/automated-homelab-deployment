@@ -1,8 +1,17 @@
 ---
-# Data-driven osx_defaults list.
-# Adding a new setting = one entry in this list. No new task block.
-# Each entry must be safe, reversible, and honest (community.general.osx_defaults
-# reads the current value before writing — ADR-0004).
+# system_defaults role defaults.
+# Override via group_vars/workstations.yml or host_vars/<host>.yml.
+#
+# Lives in `defaults/` (not `vars/`) deliberately. Ansible variable
+# precedence puts role `vars/` *above* inventory `group_vars/` — putting
+# overridable data in `vars/` makes the documented override path silently
+# fail. `defaults/` (precedence 1) sits below group/host vars, so overrides
+# work as expected.
+#
+# Adding a new setting = one entry in `system_defaults_entries`. No new
+# task block. Each entry must be safe, reversible, and honest
+# (community.general.osx_defaults reads the current value before writing —
+# ADR-0004).
 #
 # Sources: mathiasbynens/dotfiles, drduh/macOS-Security-and-Privacy-Guide.
 
