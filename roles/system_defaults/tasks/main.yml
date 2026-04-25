@@ -21,3 +21,51 @@
                         # Dock restart is cheap, so we pay for it on any
                         # osx_defaults change rather than split the loop.
   tags: [system_defaults]
+
+# ---------- Power management — always-on via user LaunchAgent ----------
+# pmset is system-scope and needs sudo, which a KVM-driven Mac can't
+# satisfy via TouchID. Instead, install a user-scope LaunchAgent that
+# runs `caffeinate -d -i -s`. Its power assertions override pmset's
+# sleep schedule for as long as the process runs; KeepAlive ensures it
+# does. No sudo, no manual one-shots — the plist file in this role is
+# the source of truth.
+#
+# Idempotency: copy hashes the plist (changed only on content drift);
+# launchctl print rc==0 detects already-loaded state; bootstrap runs
+# only when not loaded; reload runs only when the plist content changed
+# AND the agent was already loaded. Second `make check` reports zero.
+
+- name: "Always-on — install caffeinate LaunchAgent plist"
+  ansible.builtin.copy:
+    src: dev.homelab.always-on.plist
+    dest: "{{ ansible_env.HOME }}/Library/LaunchAgents/dev.homelab.always-on.plist"
+    mode: "0644"
+  register: system_defaults_alwayson_plist
+  tags: [system_defaults, always_on]
+
+- name: "Always-on — read launchd load state"
+  ansible.builtin.command:
+    cmd: "launchctl print gui/{{ ansible_user_uid }}/dev.homelab.always-on"
+  register: system_defaults_alwayson_state
+  changed_when: false
+  failed_when: false
+  check_mode: false
+  tags: [system_defaults, always_on]
+
+- name: "Always-on — bootstrap LaunchAgent (first install)"
+  ansible.builtin.command:
+    cmd: "launchctl bootstrap gui/{{ ansible_user_uid }} {{ ansible_env.HOME }}/Library/LaunchAgents/dev.homelab.always-on.plist"
+  when: system_defaults_alwayson_state.rc != 0
+  changed_when: true
+  tags: [system_defaults, always_on]
+
+- name: "Always-on — reload LaunchAgent on plist change"
+  ansible.builtin.shell: |
+    set -euo pipefail
+    launchctl bootout "gui/{{ ansible_user_uid }}/dev.homelab.always-on"
+    launchctl bootstrap "gui/{{ ansible_user_uid }}" "{{ ansible_env.HOME }}/Library/LaunchAgents/dev.homelab.always-on.plist"
+  when:
+    - system_defaults_alwayson_plist is changed
+    - system_defaults_alwayson_state.rc == 0
+  changed_when: true
+  tags: [system_defaults, always_on]

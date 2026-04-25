@@ -79,3 +79,46 @@ system_defaults_entries:
     key: AppleInterfaceStyle
     type: string
     value: Dark
+  # Screen lock — disabled. The Mac Studio is in a locked room on ethernet;
+  # screen lock is anti-tamper for laptops, friction without security
+  # benefit here. FileVault keeps the disk encrypted at rest regardless.
+  - domain: com.apple.screensaver
+    key: askForPassword
+    type: int
+    value: 0
+  - domain: com.apple.screensaver
+    key: idleTime
+    type: int
+    value: 0
+  # Programming QoL — long-press repeats (vim hjkl), faster key repeat,
+  # disable smart-substitutions in Cocoa text fields (Spotlight, alerts,
+  # native dialogs). Zed and Ghostty handle their own substitution
+  # settings; these only affect system-level Cocoa controls.
+  - domain: NSGlobalDomain
+    key: ApplePressAndHoldEnabled
+    type: bool
+    value: false
+  - domain: NSGlobalDomain
+    key: KeyRepeat
+    type: int
+    value: 2
+  - domain: NSGlobalDomain
+    key: InitialKeyRepeat
+    type: int
+    value: 15
+  - domain: NSGlobalDomain
+    key: NSAutomaticQuoteSubstitutionEnabled
+    type: bool
+    value: false
+  - domain: NSGlobalDomain
+    key: NSAutomaticDashSubstitutionEnabled
+    type: bool
+    value: false
+  - domain: NSGlobalDomain
+    key: NSAutomaticSpellingCorrectionEnabled
+    type: bool
+    value: false
+  - domain: NSGlobalDomain
+    key: NSAutomaticPeriodSubstitutionEnabled
+    type: bool
+    value: false
