@@ -35,6 +35,13 @@
 # only when not loaded; reload runs only when the plist content changed
 # AND the agent was already loaded. Second `make check` reports zero.
 
+- name: "Always-on — ensure ~/Library/LaunchAgents exists"
+  ansible.builtin.file:
+    path: "{{ ansible_env.HOME }}/Library/LaunchAgents"
+    state: directory
+    mode: "0755"
+  tags: [system_defaults, always_on]
+
 - name: "Always-on — install caffeinate LaunchAgent plist"
   ansible.builtin.copy:
     src: dev.homelab.always-on.plist
@@ -59,10 +66,15 @@
   changed_when: true
   tags: [system_defaults, always_on]
 
+# Reload on plist change. `bootout` fails (rc=3) if the agent isn't loaded,
+# which can happen via TOCTOU between the read-state probe above and this
+# task (user manually unloads, login session change, etc.). Use `set -uo`
+# (no -e) plus `|| true` on bootout so a benign "not loaded" result
+# doesn't abort the play; bootstrap is the canonical re-load path either way.
 - name: "Always-on — reload LaunchAgent on plist change"
   ansible.builtin.shell: |
-    set -euo pipefail
-    launchctl bootout "gui/{{ ansible_user_uid }}/dev.homelab.always-on"
+    set -uo pipefail
+    launchctl bootout "gui/{{ ansible_user_uid }}/dev.homelab.always-on" 2>/dev/null || true
     launchctl bootstrap "gui/{{ ansible_user_uid }}" "{{ ansible_env.HOME }}/Library/LaunchAgents/dev.homelab.always-on.plist"
   when:
     - system_defaults_alwayson_plist is changed
