@@ -45,7 +45,7 @@ The compressed essence above is the durable artifact. The `.tmp/` files are fore
 
 **Rationale.** The repo's primary audience is an LLM cold-loading to do new work (ADR-0012). The structure is judged on a single metric: how few files an agent reads before correctly placing a new change. Function-named roles + inventory-driven OS dispatch is the lowest-information-loss shape: an agent reads `AGENTS.md § 3` (the table), the relevant role README, and the relevant per-OS taskfile — three reads, end-to-end, for "where does my new macOS default go" or "where does my new Debian package install go."
 
-Workstation heterogeneity (multiple OS families across the fleet) does not multiply the role tree — it multiplies the per-OS taskfiles inside existing roles. ADR-0008's 5-role lock holds.
+Workstation heterogeneity across the fleet (multiple OS families, multiple form factors) does not multiply the role tree — it multiplies the per-OS taskfiles inside existing roles. ADR-0008's 5-role lock holds.
 
 **Consequences:**
 - Adding a new OS to an existing role = one new `tasks/<OsFamily>.yml` file. Linear cost.

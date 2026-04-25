@@ -18,7 +18,7 @@ WHO — host groups by **purpose**, not by OS. OS is computed at runtime from `a
 |---|---|
 | Shared default for the role | `roles/<role>/defaults/main.yml` |
 | Workstation-only override | `inventory/group_vars/workstations.yml` |
-| One-host override (e.g. workstation softer harden list) | `inventory/host_vars/workstation.yml` |
+| One-host override (e.g. a workstation with a softer harden list) | `inventory/host_vars/<host>.yml` |
 
 ## Adding a host
 

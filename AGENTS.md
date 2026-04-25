@@ -4,9 +4,38 @@ Pick your altitude. Scroll-stop at the section that answers your question.
 
 ---
 
+## Objectives
+
+**Purpose.** Build and maintain home-cooked relationship technology — Plex / Plexamp, book library, photos, messaging, home automation, DNS, and adjacent services — for Z and a private trusted audience, outside capitalist platforms. Z and LLM agents are the operators; this harness is what makes that operator role tractable enough that running the lab does not become a full-time job. Audience specifics — counts, identities, relationships — live in `~/.agents/memory/long-term/project_homelab_household.md`, not here. This file is git-tracked.
+
+**Why now.** A node broke ~60 days ago, exposing the fragility of 5 years of manual builds; the backlog has accreted; and the Mac Studio just arrived as Z's first dedicated workstation — itself a managed node, and the place from which the rest of the lab is now driven.
+
+**Done looks like.**
+
+- Any node can be stood back up to its most recent state within a day.
+- Backups guarantee no catastrophic loss. *(Threshold: `unknown — to clarify`. What counts as catastrophic — full photo library? specific datasets? per-service RPO/RTO targets?)*
+- PII and other private state is reliably held outside any public git repo, by design — no per-commit vigilance required.
+- Z is operating the lab ~zero-touch in steady state and can manage it from anywhere when away.
+
+**Out of scope** — layer-shaped, not capability-shaped. Eventually *all* lab hardware becomes managed by this harness; the line is *which layer*.
+
+- Per-service deep config (e.g. the Plex compose stack with Gluetun/NFS wiring) lives in the per-node repo — `homelab-media-streaming`, future `homelab-household-management`, etc. The harness owns provisioning, OS config, deploy orchestration, secrets injection, and cross-cutting policy.
+- Service users are not operators. The harness owes them a working stack and readable docs, not a UX.
+- No per-user provisioning automation — the harness is not a multi-tenant system.
+
+**Who else.** Audience categories — counts, identities, relationships live in `~/.agents/memory/long-term/project_homelab_household.md`.
+
+- **Primary trusted user** — daily user; technical reader; not an operator. Quality bar: best-in-class. Docs and behavior are technical-grade, not dumbed-down. Things should just work.
+- **Other trusted users** — service users only. Most depend on Plex + its backends; some on Plexamp, the book library, adjacent services.
+- **Future-Z** — engages in scheduled bursts. Tinkers little when nothing is broken.
+- **LLM agents** — co-operators alongside Z. Take on the infra / ops / documenting / incident-management work that Z is explicitly trying to minimize.
+- **Z himself** — the minimization target is *Z's time on infra, ops, documenting, and outage handling*. The experience for trusted users is **not** a minimization target; it gets full investment.
+
+---
+
 ## 1. Philosophy
 
-This repo configures a long-lived home lab declaratively via Ansible. The harness covers a Mac Studio master control node plus a Linux fleet (Pis, NUCs, a (redacted) NAS) managed over SSH.
+This repo configures a home lab declaratively via Ansible. The harness covers a Mac master control node plus a Linux fleet managed over SSH. Inventory uses generic group names (`master`, `nucs`, `pis`, `nas`); specific hardware models, host counts, and topology live in `~/.agents/memory/long-term/project_homelab_household.md`, not here.
 
 Priorities, in order:
 
@@ -85,11 +114,11 @@ Order matters. Do them in order. Cross off as done.
 - [ ] `shell_env` role (Ghostty/Zed configs + dotfile symlinks)
 
 **Next**
-- [ ] Obsidian vault → Linear-esque local backlog (frontmatter schema, Dataview dashboards, (redacted))
+- [ ] Obsidian vault → Linear-esque local backlog (frontmatter schema, Dataview dashboards)
 - [ ] Migrate `legacy/ansible/setup_nuc.yml` secrets from Ansible Vault → `onepassword` lookup
 
 **Later**
-- [ ] **Rethink backup architecture.** Replace the legacy per-NUC cron (`legacy/ansible/scheduler.yml` deploys cron on each NUC) with Mac-Studio-driven orchestration: cron lives on the master node and SSHes out to fleet hosts. Gated by NAS subsystem work-in-progress. Targets in scope: NUCs (Immich data, Home Assistant config, media metadata), Pis. Out of scope this round: cloud backups (S3, Backblaze) — separate decision.
+- [ ] **Rethink backup architecture.** Replace the legacy per-host cron (`legacy/ansible/scheduler.yml`) with master-driven orchestration: cron lives on the master node and SSHes out to fleet hosts. Gated by NAS subsystem work-in-progress. Out of scope this round: cloud backups — separate decision. Operational specifics (current state of each subsystem, which hosts hold which datasets) live in memory, not here.
 - [ ] Populate `homelab-household-management` repo for a dedicated NUC (Immich, Home Assistant)
 - [ ] Refactor `legacy/ansible/setup_nuc.yml` into NUC-scoped roles in this repo
 - [ ] V1 legacy `homelab.family` forensic cleanup (missing Home Assistant container, orphaned AppDaemon, MQTT / DNS clarifications)
@@ -97,7 +126,7 @@ Order matters. Do them in order. Cross off as done.
 - [ ] System-app suppression (Chess, Photos, Calendar, etc. — bundles in `/System/Applications/` are SIP-protected per ADR-0005; suppression rather than removal). Pending `/literature` to settle the mechanism: `lsregister -u`, Spotlight Privacy plist, `mdutil` exclusions, or a combination.
 - [ ] LuLu preferences ratification — preferences plist (`com.objective-see.lulu`) is scriptable, but the right defaults (block-by-default? passive mode? alert-vs-allow for Apple binaries?) need a `/literature` pass before being baked in.
 - [ ] Tailscale — add when there's a fleet host that needs remote reach; decision-ready (Tailscale over Headscale) but not installed
-- [ ] On-device LLM serving (Ollama) — add when a concrete workflow needs it; Mac-local initially, a future (redacted) handles fine-tuning
+- [ ] On-device LLM serving (Ollama) — add when a concrete workflow needs it
 
 **Deferred (decided, not scheduled)**
 - `apple_cruft` layer 2 (delete consumer-app bundles) — default off; only enable after Tart VM rehearsal
@@ -171,7 +200,7 @@ The harness is "working" when:
 - **[`inventory/hosts.yml`](./inventory/hosts.yml)** — host groups (`master`, `nucs`, `nas`, `pis`).
 - **[`group_vars/master.example.yml`](./group_vars/master.example.yml)** — the tracked template. Copy to `master.yml` (gitignored) for real values.
 - **Related repos** (not under this harness): `homelab-media-streaming` (standalone Plex NUC), `homelab-household-management` (dedicated NUC — currently empty, populated later), `homelab.family` (V1 legacy — forensic only), `obsidian-notes` (local notes vault).
-- **Machine memory** (Claude Code, per-user): `~/.claude/projects/-Users-homelab/memory/` — session-persistent context notes.
+- **Machine memory** (Claude Code, per-user): `~/.agents/memory/` (symlinked from `~/.claude/projects/-Users-homelab/memory/`) — private per-machine context. Routing contract: `~/.agents/memory/AGENTS.md`.
 
 ---
 

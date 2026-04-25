@@ -6,13 +6,11 @@
 # See legacy/ansible/README.md for the parity protocol.
 #
 # ─── ARCHITECTURE PIVOT (2026-04-25) ─────────────────────────────────
-# This pattern — "deploy a cron *on the NUC* that runs a local
-# ansible-playbook" — is being retired. The Mac Studio (master node)
-# will drive the backup cron centrally and SSH out to fleet hosts.
+# This pattern — "deploy a cron *on each host* that runs a local
+# ansible-playbook" — is being retired. The master node will drive
+# the backup cron centrally and SSH out to fleet hosts.
 # Reasons:
-#   1. NAS subsystem work-in-progress
-#      anyway, so there is no urgency to preserve the deployed cron.
-#   2. Centralising on the master node is consistent with ADR-0001
+#   1. Centralising on the master node is consistent with ADR-0001
 #      ("one harness for the whole fleet") — the scheduler runs from
 #      one place that knows which fleet hosts are reachable, instead
 #      of each host scheduling its own.
