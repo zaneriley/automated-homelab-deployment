@@ -19,7 +19,7 @@ The 2026-04-25 IA peer review rejected the `cloudflare/` top-level rename 4-of-5
 
 ## Current state
 
-`cloudflare/` holds the existing Cloudflare DNS + page rules. The flat `.tf` files at this directory's root will be moved into `cloudflare/` once the rename lands (sequencing TBD; tracked in AGENTS.md § 3).
+`cloudflare/` holds the existing Cloudflare DNS + page rules (`dns.tf`, `pagerules.tf`, `provider.tf`, `variables.tf`, `.terraform.lock.hcl`). No other vendor subdirectories exist yet; `tailscale/` is ratified-but-deferred.
 
 ## Secrets
 
