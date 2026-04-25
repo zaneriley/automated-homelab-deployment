@@ -1,0 +1,20 @@
+---
+# shell_env role defaults.
+# Override via group_vars/workstations.yml or host_vars/<host>.yml.
+#
+# Each entry adds one tool whose config is symlinked from the repo's
+# dotfiles/ tree into ~/.config/<tool>/. The role's tasks loop over
+# this list — adding a new tool = one entry here, no new task block.
+#
+# Adding a tool:
+#   1. Drop the canonical config at dotfiles/<tool>/<file>.
+#   2. Append { tool: <tool>, file: <file> } here.
+#   3. make check → make apply → make check (second reports changed=0).
+
+shell_env_dotfiles:
+  - tool: ghostty
+    file: config
+  - tool: zed
+    file: settings.json
+  - tool: aerospace
+    file: aerospace.toml
