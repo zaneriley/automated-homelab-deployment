@@ -1,15 +1,37 @@
 ---
 # User-scope (gui/<uid>) launch agents to disable under
-# harden_apple_cruft_disable. These are Siri and Apple Intelligence
-# supporting daemons.
+# `harden_apple_cruft_disable`. These are the Siri / Apple Intelligence
+# daemons plus the supporting daemons for Apple's bundled consumer apps
+# that Z does not use (Calendar, Photos, Maps, News, Mail, Contacts,
+# Books, FaceTime, Find My, Game Center, Home, Notes, Podcasts, Voice,
+# Weather, Stickers, Safari sync).
 #
 # Disabling via `launchctl disable` is persistent — the daemon won't
 # launch on next login. We deliberately do NOT `launchctl bootout` the
 # currently-running instances in this role; a logout/login cycle handles
 # that cleanly without the bootout idempotency dance.
+#
+# Side effects (worth knowing before flipping `harden_apple_cruft_disable: false`):
+#   - Mail/Contacts daemons disabled → if you re-enable Apple Mail.app
+#     later, calendar invites preview, contact autocomplete, and iCloud
+#     mail sync will all be broken until you remove this list.
+#   - Find My daemons disabled → "Find My Mac" stops working (no remote
+#     locate / lock / wipe). Disable only if you accept that trade-off.
+#   - Photos daemons disabled → Photo Booth and Continuity Camera lose
+#     auto-import; iMessage's photo picker still works but slower.
+#   - Maps daemons disabled → Maps.app launches but background traffic
+#     and pinned-place sync stop.
+#   - Home daemons disabled → HomeKit-via-Apple-Home is dead; HomeKit
+#     bridges via Home Assistant / mqtt / etc. are unaffected.
+#   - Game Center disabled → no leaderboards, no Game Center sign-in.
+#     Standalone single-player apps work fine.
+#
+# To carve out an exception on a specific host: override
+# `harden_launchctl_disable_labels` in `group_vars/master.yml` (your
+# gitignored override) with a tweaked list.
 
 harden_launchctl_disable_labels:
-  # Siri — com.apple.Siri.agent is already disabled on fresh macOS Tahoe
+  # Siri (com.apple.Siri.agent is already disabled on fresh macOS Tahoe)
   - com.apple.assistantd
   - com.apple.siriactionsd
   - com.apple.siri.context.service
@@ -21,6 +43,88 @@ harden_launchctl_disable_labels:
   - com.apple.intelligencetasksd
   - com.apple.intelligencecontextd
   - com.apple.callintelligenced
+
+  # Calendar
+  - com.apple.calendar.CalendarAgentBookmarkMigrationService
+
+  # Photos
+  - com.apple.cloudphotod
+  - com.apple.photoanalysisd
+  - com.apple.photolibraryd
+  - com.apple.CloudPhotosConfiguration
+
+  # Maps
+  - com.apple.Maps.mapspushd
+  - com.apple.Maps.mapssyncd
+  - com.apple.maps.destinationd
+
+  # News
+  - com.apple.newsd
+
+  # Mail (kept disabled because Z uses third-party clients)
+  - com.apple.email.maild
+  - com.apple.icloudmailagent
+  - com.apple.MailServiceAgent
+  - com.apple.mdworker.mail
+
+  # Contacts (Apple's Contacts.app + iCloud sync; third-party tools
+  # can still talk to ~/Library/Application Support/AddressBook/ if
+  # we ever revisit, but the background syncing daemons stay off)
+  - com.apple.AddressBook.AssistantService
+  - com.apple.AddressBook.SourceSync
+  - com.apple.AddressBook.abd
+  - com.apple.contacts.donation-agent
+  - com.apple.contacts.postersyncd
+  - com.apple.contactsd
+
+  # Books
+  - com.apple.bookassetd
+  - com.apple.bookdatastored
+
+  # FaceTime (Messages.app stays — separate from FaceTime daemons)
+  - com.apple.facetimemessagestored
+
+  # Find My — note the lost-laptop trade-off in the header comment
+  - com.apple.findmy.findmylocateagent
+  - com.apple.findmymacmessenger
+  - com.apple.icloud.findmydeviced.findmydevice-user-agent
+
+  # Game Center
+  - com.apple.gamed
+  - com.apple.gamesaved
+  - com.apple.GameController.gamecontrolleragentd
+  - com.apple.GameOverlayUI
+  - com.apple.GamePolicyAgent
+  - com.apple.gamecontroller.ConfigService
+
+  # Apple Home (HomeKit-via-Apple). HomeKit through Home Assistant is
+  # a separate stack and is unaffected.
+  - com.apple.homed
+  - com.apple.homeenergyd
+  - com.apple.homeeventsd
+
+  # Notes (Apple Notes.app — Z uses Obsidian)
+  - com.apple.LinkedNotesUIService
+  - com.apple.Notes.datastore
+  - com.apple.notes.exchangenotesd
+
+  # Podcasts
+  - com.apple.podcasts.PodcastContentService
+
+  # Voice (memos + voice banking accessibility data collection — keep
+  # the macOS-wide accessibility VoiceOver service running)
+  - com.apple.voicebankingd
+  - com.apple.voicememod
+
+  # Weather widget / app
+  - com.apple.weatherd
+
+  # Stickers (iMessage stickers UI)
+  - com.apple.stickersd
+
+  # Safari bookmarks sync (Z uses Zen — Safari is the system fallback,
+  # not the daily driver, so the iCloud bookmark sync is dead weight)
+  - com.apple.SafariBookmarksSyncAgent
 
 # Layer 2 — user-removable consumer Apple app bundles in /Applications/
 # (NOT /System/Applications/, which is SIP-protected and out of scope per

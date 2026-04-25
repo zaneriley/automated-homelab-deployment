@@ -25,10 +25,27 @@ These five are the only consumer Apple bundles that ship under `/Applications/` 
 ## Layer 1 — what's implemented now
 
 1. **Dock emptying** — `persistent-apps` and `persistent-others` become empty arrays; a handler runs `killall Dock` so the change takes effect immediately.
-2. **Siri / Apple Intelligence launch-agent disables** (user scope, `gui/<uid>`) — persistent `launchctl disable` for 9 daemons across Siri and the AI stack (list in `vars/main.yml`). The Dock handler is separate from launchctl; a logout/login cycle actually stops the running instances.
-3. **Siri user-preference disables** — the user-preference side (Siri menu-bar entry, "Hey Siri," main assistant switch) lives in `roles/system_defaults/vars/main.yml` under the Siri block.
+2. **Launch-agent disables** (user scope, `gui/<uid>`) — persistent `launchctl disable` for ~50 daemons covering:
+   - **Siri** (assistantd, siriactionsd, siri.context.service)
+   - **Apple Intelligence** (generativeexperiencesd, intelligenceplatformd, intelligenceflowd, intelligencetasksd, intelligencecontextd, callintelligenced)
+   - **Apple-bundled consumer apps Z does not use**: Calendar, Photos, Maps, News, Mail, Contacts, Books, FaceTime, Find My, Game Center, Home, Notes, Podcasts, Voice (memos / banking), Weather, Stickers, Safari bookmark sync
+   The full per-app list with grouping and side-effect notes is in `vars/main.yml`. The disables are persistent — daemons won't relaunch on next login. Currently-running instances stay up until logout (we don't `launchctl bootout` to avoid that idempotency dance).
+3. **Siri user-preference disables** — `Assistant Enabled`, `StatusMenuVisible`, `VoiceTriggerUserEnabled` — set in `roles/system_defaults/vars/main.yml`.
 
-Not yet in the role, tracked in `docs/manual-steps.md` because they're genuinely GUI-only:
+### Side-effect contract for the launch-agent set
+
+Disabling supporting daemons is the closest we get to "remove" without disabling SIP (ADR-0005). The `.app` bundles still exist under `/System/Applications/` and remain double-clickable. What's gone:
+
+- Background sync, indexing, and network calls from the disabled apps
+- Auto-launch on login
+- Most cross-app integrations that depend on these daemons (e.g. Mail's contact autocomplete relies on `contactsd` — see `vars/main.yml` for the full side-effect inventory)
+
+What's NOT addressed by Layer 1 (intentionally):
+
+- Spotlight / Launchpad still surface the apps as launchable — a future commit will add Spotlight exclusion
+- The system-app bundles themselves (system-app *removal* is forbidden by ADR-0005 because it requires SIP-off + Recovery boot, which we don't do)
+
+### Layer 1 — manual follow-ups (tracked in `docs/manual-steps.md`)
 
 - Full iCloud sign-out (Apple requires an interactive password + Find-My confirmation)
 - iCloud Drive Desktop/Documents folder sync toggle
