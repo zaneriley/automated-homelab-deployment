@@ -1,25 +1,40 @@
 ---
 # roles/system_defaults/tasks/main.yml
 # Data-driven osx_defaults loop (ADR-0004). Each entry in
-# system_defaults_entries (vars/main.yml) becomes one osx_defaults task.
+# system_defaults_entries (defaults/main.yml) becomes one iteration.
 # The module reads the current plist value before writing and only
 # reports changed when it actually changed — this is how we earn the
 # "second make check = 0 changes" correctness witness (ADR-0009).
+#
+# Split into Dock-keys vs non-Dock so the play-level `Restart Dock`
+# handler only fires when an actual Dock key changed. Pre-split, the
+# single loop's `notify` fired on *any* osx_defaults change, killing
+# the user's running Dock mid-session for unrelated changes
+# (TextEdit, screensaver, keyboard prefs, etc.).
 
-- name: Apply managed defaults
+- name: "Apply managed defaults — Dock keys (notifies Restart Dock)"
   community.general.osx_defaults:
     domain: "{{ item.domain }}"
     key: "{{ item.key }}"
     type: "{{ item.type }}"
     value: "{{ item.value }}"
     state: present
-  loop: "{{ system_defaults_entries }}"
+  loop: "{{ system_defaults_entries | selectattr('domain', 'equalto', 'com.apple.dock') | list }}"
   loop_control:
     label: "{{ item.domain }} {{ item.key }}"
-  notify: Restart Dock   # reach for harden role's handler; safe across roles
-                        # in the same play — Ansible handler scope is play-wide.
-                        # Dock restart is cheap, so we pay for it on any
-                        # osx_defaults change rather than split the loop.
+  notify: Restart Dock
+  tags: [system_defaults]
+
+- name: "Apply managed defaults — non-Dock keys (no Dock restart)"
+  community.general.osx_defaults:
+    domain: "{{ item.domain }}"
+    key: "{{ item.key }}"
+    type: "{{ item.type }}"
+    value: "{{ item.value }}"
+    state: present
+  loop: "{{ system_defaults_entries | rejectattr('domain', 'equalto', 'com.apple.dock') | list }}"
+  loop_control:
+    label: "{{ item.domain }} {{ item.key }}"
   tags: [system_defaults]
 
 # ---------- Power management — always-on via user LaunchAgent ----------

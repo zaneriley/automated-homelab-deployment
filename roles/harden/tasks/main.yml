@@ -5,24 +5,16 @@
 
 # ---------- Layer 1: Disable ----------
 
-- name: "Harden/L1 — empty Dock persistent-apps"
+- name: "Harden/L1 — empty Dock persistent-apps + persistent-others"
   community.general.osx_defaults:
     domain: com.apple.dock
-    key: persistent-apps
+    key: "{{ item }}"
     type: array
     value: []
     state: present
-  when: harden_apple_cruft_disable | bool
-  notify: Restart Dock
-  tags: [harden, apple_cruft, harden_apple_cruft_disable]
-
-- name: "Harden/L1 — empty Dock persistent-others"
-  community.general.osx_defaults:
-    domain: com.apple.dock
-    key: persistent-others
-    type: array
-    value: []
-    state: present
+  loop:
+    - persistent-apps
+    - persistent-others
   when: harden_apple_cruft_disable | bool
   notify: Restart Dock
   tags: [harden, apple_cruft, harden_apple_cruft_disable]
