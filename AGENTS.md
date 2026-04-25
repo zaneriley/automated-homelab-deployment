@@ -8,8 +8,6 @@ Pick your altitude. Scroll-stop at the section that answers your question.
 
 **Purpose.** Build and maintain home-cooked relationship technology — Plex / Plexamp, book library, photos, messaging, home automation, DNS, and adjacent services — for Z and a private trusted audience, outside capitalist platforms. Z and LLM agents are the operators; this harness is what makes that operator role tractable enough that running the lab does not become a full-time job. Audience specifics — counts, identities, relationships — live in `~/.agents/memory/long-term/project_homelab_household.md`, not here. This file is git-tracked.
 
-**Why now.** A node broke ~60 days ago, exposing the fragility of 5 years of manual builds; the backlog has accreted; and the Mac Studio just arrived as Z's first dedicated workstation — itself a managed node, and the place from which the rest of the lab is now driven.
-
 **Done looks like.**
 
 - Any node can be stood back up to its most recent state within a day.
@@ -35,14 +33,14 @@ Pick your altitude. Scroll-stop at the section that answers your question.
 
 ## 1. Philosophy
 
-This repo configures a home lab declaratively via Ansible. The harness covers a Mac master control node plus a Linux fleet managed over SSH. Inventory uses generic group names (`master`, `nucs`, `pis`, `nas`); specific hardware models, host counts, and topology live in `~/.agents/memory/long-term/project_homelab_household.md`, not here.
+This repo configures a home lab declaratively via Ansible. The harness covers a Mac master control node plus a Linux fleet managed over SSH. Inventory uses generic group names by purpose (`workstations`, `nucs`, `pis`, `nas`) — the Mac Studio is the sole `workstations` member today. Specific hardware models, host counts, and topology live in `~/.agents/memory/long-term/project_homelab_household.md`, not here.
 
 Priorities, in order:
 
 1. **De-Apple the Mac.** No iCloud sync, no Apple Intelligence, no Siri, delete consumer apps (Music/TV/News/Maps/Stocks/Photos/GarageBand/iMovie/iWork). Keep Messages (for LLM agent tooling), Safari (system fallback), Xcode + Command Line Tools.
 2. **FLOSS-first toolchain** wherever viable.
 3. **Declarative and reproducible.** Nothing clicked in the GUI that could be scripted. Every `defaults` key, every package, every service config lives here as YAML or text.
-4. **One harness for the whole lab.** Same Ansible inventory and role structure for `master` (Mac), `nucs`, `pis`, `nas`. Apple-specific roles scoped `hosts: master` only.
+4. **One harness for the whole lab.** Same Ansible inventory and role structure for `workstations`, `nucs`, `pis`, `nas`. Apple-specific roles scoped `hosts: workstations` only — OS dispatch inside the role keeps the door open for non-Mac workstations later.
 5. **Clean machine.** No global language runtimes on the Mac. Use version managers (mise, nvm, uv, pipx) or Colima containers for language-specific work.
 
 ---
@@ -68,37 +66,32 @@ Detailed rationale in [`ADRS.md`](./ADRS.md).
 
 ## 3. Repo information architecture
 
-The directory tree, with one-line purpose for each top-level entry. Local conventions live in per-directory READMEs.
+The directory tree, with one-line purpose for each top-level entry. Local conventions live next to the code (file headers, task comments, vars-file blurbs) — this file is the only contract.
 
-| Path | Purpose | Local rules in |
-|---|---|---|
-| `inventory/` | WHO — host groups by purpose; OS resolved at runtime via `ansible_os_family` | `inventory/README.md` |
-| `roles/` | WHAT — function-named, OS-dispatched inside via `import_tasks: "{{ ansible_os_family }}.yml"` | `roles/README.md` |
-| `dotfiles/` | Ansible role payload (NOT chezmoi/stow); symlinked into `~/.config/<tool>/` by `shell_env` | `dotfiles/README.md` |
-| `scripts/` | Operator helpers (Tart rehearsal today); prefer role-internal for new ones | `scripts/README.md` |
-| `terraform/<vendor>/` | Per-vendor declarative state (Cloudflare today; Tailscale next) | `terraform/README.md` |
-| `cloud-init/` | Linux-fleet provisioning seed; cloud-init user-data + meta-data | `cloud-init/README.md` |
-| `docs/runbooks/` | Human procedures (canonical) — `manual-steps.md`, future how-tos | `docs/README.md` |
-| `docs/site/` | Nextra documentation site (publishes from `runbooks/`, doesn't duplicate) | `docs/README.md` |
-| `legacy/ansible/` | Frozen pre-Mac-Studio NUC playbooks; parity not yet runtime-verified | `legacy/ansible/README.md` |
+| Path | Purpose |
+|---|---|
+| `inventory/` | WHO — host groups by purpose (`workstations`, `nucs`, `pis`, `nas`); OS resolved at runtime via `ansible_os_family` |
+| `group_vars/`, `host_vars/` | Group- and host-scoped overrides at repo root (Ansible's default lookup); `*.example.yml` tracked, `*.yml` gitignored (ADR-0007) |
+| `roles/` | WHAT — function-named, OS-dispatched inside via `import_tasks: "{{ ansible_os_family }}.yml"` (target shape — single-OS today, see §3 note below) |
+| `dotfiles/` | Ansible role payload (NOT chezmoi/stow); symlinked into `~/.config/<tool>/` by `shell_env` |
+| `scripts/` | Operator helpers (Tart rehearsal today); prefer role-internal for new ones; junk-drawer cliff at ~3 distinct domains |
+| `terraform/<vendor>/` | Per-vendor declarative state — `cloudflare/` today, `tailscale/` next |
+| `cloud-init/` | Linux-fleet provisioning seed; cloud-init `user-data` + `meta-data` |
+| `docs/runbooks/` | Human procedures (canonical) — `manual-steps.md`, future how-tos |
+| `docs/site/` | Nextra documentation site (publishes from `runbooks/`, doesn't duplicate) |
+| `legacy/ansible/` | Frozen pre-Mac-Studio NUC playbooks; parity not yet runtime-verified |
 
 **Locked structural decisions:** ADR-0013 (this layout), ADR-0008 (5 lifecycle-aligned roles), ADR-0001 (single Ansible repo for the whole fleet), ADR-0012 (orientation triad at root).
 
 **Why this shape:** function-named roles + facts-based OS dispatch is the dominant pattern in heterogeneous-fleet IaC repos. See **ADR-0013** for the convergence trace (5 IA proposals → multi-OS `/literature` brief → 5 peer reviews).
 
-**Completed moves** (in commit-order):
-- `terraform/*.tf` → `terraform/cloudflare/*.tf` (`a2d0dcd`)
-- `docs/manual-steps.md` → `docs/runbooks/manual-steps.md` (`e458f29`)
-- Legacy in-file annotations on `ansible/*` and `ubuntu-server/*` (`520ca0e`)
-- `ansible/` → `legacy/ansible/`, `ubuntu-server/` → `cloud-init/`, Nextra files → `docs/site/` (this commit cycle); legacy file headers updated to reflect "moved here, NOT yet runtime-verified"
+**OS dispatch — target vs current.** ADR-0013 ratified the `tasks/main.yml` → `tasks/{{ ansible_os_family }}.yml` indirection as the eventual shape. Today every role's `tasks/main.yml` contains the macOS work directly — `workstations` has one Mac host, the indirection earns nothing yet. Split when a second OS family lands in `workstations`, or when a role's macOS body grows large enough that the indirection pays for itself.
 
 **Open question** (not gating any further IA move):
 - Is the Nextra site still being published anywhere (CI / Vercel / Pages)? If no → retire to `legacy/docs-site/`; if yes → leave at `docs/site/`. Tracked in ADR-0013.
 
 **Runtime verification** (deferred, intentional):
-The legacy NUC playbooks at `legacy/ansible/` are path-correct on paper but not runtime-verified — Z's NUCs and Pis are working as-is and we're not re-running the legacy plays right now. Each legacy file's header (and `legacy/ansible/README.md`) lists what to verify when they are next executed.
-
-The READMEs reflect the current state.
+The legacy NUC playbooks at `legacy/ansible/` are path-correct on paper but not runtime-verified — Z's NUCs and Pis are working as-is and we're not re-running the legacy plays right now. The "what to verify when next run" notes live in file headers inside `legacy/ansible/`.
 
 ---
 
@@ -106,12 +99,13 @@ The READMEs reflect the current state.
 
 Order matters. Do them in order. Cross off as done.
 
-**Now**
-- [ ] Scaffold master-node harness: inventory, group_vars, site.yml, 5-role skeleton
-- [ ] `system_defaults` role + `bootstrap` role (so `make apply` does something meaningful)
-- [ ] `harden` role layer 1 (de-Apple disable-only, variable-gated)
-- [ ] `workstation_tools` role (Brewfile + installs)
-- [ ] `shell_env` role (Ghostty/Zed configs + dotfile symlinks)
+**Now** — empty. Phase-1 scaffold and the five master-node roles all shipped. Move to **Next** for the active queue.
+
+- [x] Scaffold master-node harness: inventory, group_vars, site.yml, 5-role skeleton (`1308614`)
+- [x] `system_defaults` role + `bootstrap` role (`2986c19`, `127fc40`)
+- [x] `harden` role layer 1 — de-Apple disable-only, variable-gated (`bcc67c0`, `ef7a39a`, `0bbf095`)
+- [x] `workstation_tools` role — default browser, AeroSpace, dark theme (`e3abb55`)
+- [x] `shell_env` role — Ghostty/Zed configs + dotfile symlinks (`30485c3`)
 
 **Next**
 - [ ] Obsidian vault → Linear-esque local backlog (frontmatter schema, Dataview dashboards)
@@ -160,8 +154,8 @@ Every commit that touches a role or config must pass:
 Before a role lands on `main`:
 
 1. All of A
-2. Role has a short `README.md`: purpose, toggle variable, blast radius, undo path
-3. Destructive ops gated per-layer (three-layer pattern inside `harden`)
+2. Destructive ops gated per-layer (three-layer pattern inside `harden`)
+3. Toggle, blast radius, and undo path are documented **in the code** — `defaults/main.yml` headers, task-file comments, vars-file blurbs. Not a separate README. AGENTS.md is the only contract; per-folder READMEs proliferate and rot.
 
 ### C. Whole-harness gate
 
@@ -169,7 +163,7 @@ The harness is "working" when:
 
 1. `./bootstrap.sh` on a fresh macOS install produces the configured state in one command
 2. Immediately after, `make check` reports zero changes
-3. Human-visible state in System Settings matches `group_vars/master.yml`
+3. Human-visible state in System Settings matches `group_vars/workstations.yml`
 4. Wipe + rebuild reproduces the same state
 
 ### What we rely on (honestly)
@@ -197,8 +191,8 @@ The harness is "working" when:
 - **[`ADRS.md`](./ADRS.md)** — decision log; read this to understand *why* a thing is the way it is. Append-only. Supersede old entries rather than delete.
 - **[`CHANGELOG.md`](./CHANGELOG.md)** — timeline of what landed when, grouped by role scope. Generated from Conventional Commits by `git-cliff` (see [ADR-0012](./ADRS.md)). Third orientation leg: ADRS explains *why*, AGENTS defines *what should be true*, CHANGELOG records *when*. Regenerate with `make changelog`; verify with `make changelog-check`. Never hand-edit.
 - **[`Makefile`](./Makefile)** — `make help` for the full target list. Primary targets: `lint`, `check`, `apply`, `smoke`, `changelog`, `changelog-check`, `release`.
-- **[`inventory/hosts.yml`](./inventory/hosts.yml)** — host groups (`master`, `nucs`, `nas`, `pis`).
-- **[`group_vars/master.example.yml`](./group_vars/master.example.yml)** — the tracked template. Copy to `master.yml` (gitignored) for real values.
+- **[`inventory/hosts.yml`](./inventory/hosts.yml)** — host groups (`workstations`, `nucs`, `nas`, `pis`).
+- **[`group_vars/workstations.example.yml`](./group_vars/workstations.example.yml)** — the tracked template. Copy to `workstations.yml` (gitignored) for real values.
 - **Related repos** (not under this harness): `homelab-media-streaming` (standalone Plex NUC), `homelab-household-management` (dedicated NUC — currently empty, populated later), `homelab.family` (V1 legacy — forensic only), `obsidian-notes` (local notes vault).
 - **Machine memory** (Claude Code, per-user): `~/.agents/memory/` (symlinked from `~/.claude/projects/-Users-homelab/memory/`) — private per-machine context. Routing contract: `~/.agents/memory/AGENTS.md`.
 

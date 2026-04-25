@@ -2,7 +2,21 @@
 # Parity with the new role-shaped harness has NOT been verified.
 # Moved to legacy/ansible/ per ADR-0013 — path-correct on paper, NOT yet runtime-verified.
 # At next NUC run, verify template:/vars_files: paths + cloud-init/ refs (was ubuntu-server/).
-# See legacy/ansible/README.md for the parity protocol.
+#
+# ─── Parity-verification protocol ────────────────────────────────────
+# When the new role-shaped harness needs to *replace* this playbook
+# (i.e. when a fleet host needs to converge against the new roles
+# instead of these legacy plays), follow this sequence:
+#   1. Inventory each task in this file → mark kept / refactored /
+#      deferred / dropped (track in legacy/INVENTORY.md).
+#   2. Cut a `legacy-baseline-vN` git tag.
+#   3. Capture a `--check --diff` baseline against a representative NUC.
+#   4. Refactor by slice; re-run; diff resulting state against baseline.
+#   5. Migrate vault.yml secrets to community.general.onepassword
+#      lookups (ADR-0007).
+#   6. Delete the relevant files from legacy/ansible/ only when zero
+#      rows in the inventory remain `kept`.
+# Until that day, this file is steady-state authority for the NUCs.
 - name: Set up dockeruser and homelab dependencies
   hosts: nucs
   become: yes

@@ -1,9 +1,9 @@
 ---
 # Top-level playbook. Routes roles to host groups.
-# Apple-specific roles run only on `master` (ADR-0008, AGENTS.md §1 item 4).
+# Apple-specific roles run only on `workstations` (ADR-0008, ADR-0013, AGENTS.md §1 item 4).
 
-- name: Master node (Mac Studio)
-  hosts: master
+- name: Workstations (Mac Studio master node, future workstation hosts)
+  hosts: workstations
   gather_facts: true
   roles:
     - bootstrap

@@ -26,7 +26,7 @@ Format:
 2. **Inventory groups are by purpose, not OS.** `workstations`, `nucs`, `pis`, `nas` — heterogeneous by design. OS is computed from facts at runtime, never encoded in path.
 3. **Tool/vendor declarative state lives in tool-named top-level dirs with vendor sub-dirs.** `terraform/cloudflare/` today, `terraform/tailscale/` when ratified-but-deferred lands. The vendor name is a sub-dir, not the dir.
 
-The full top-level layout is documented in `AGENTS.md` § 3. Eight per-directory `README.md` files carry local conventions (var precedence, OS-scoping rules, payload-vs-role-internal placement, junk-drawer cliff for `scripts/`).
+The full top-level layout is documented in `AGENTS.md` § 3. Local conventions live in code (file headers, task comments, vars-file blurbs); per-directory READMEs were retired — AGENTS.md §3 is the only contract for layout.
 
 **Alternatives considered (and rejected):**
 - **DDD bounded-context neighborhoods** (`workstation/`, `fleet/`, `edge/`, `ops/`, `secrets/`) — over-engineered for current scale; agent 1 of the IA fan-out flagged this against itself in §7.
@@ -43,7 +43,7 @@ The full top-level layout is documented in `AGENTS.md` § 3. Eight per-directory
 
 The compressed essence above is the durable artifact. The `.tmp/` files are forensic — kept locally as long as useful, deletable thereafter without losing the decision.
 
-**Rationale.** The repo's primary audience is an LLM cold-loading to do new work (ADR-0012). The structure is judged on a single metric: how few files an agent reads before correctly placing a new change. Function-named roles + inventory-driven OS dispatch is the lowest-information-loss shape: an agent reads `AGENTS.md § 3` (the table), the relevant role README, and the relevant per-OS taskfile — three reads, end-to-end, for "where does my new macOS default go" or "where does my new Debian package install go."
+**Rationale.** The repo's primary audience is an LLM cold-loading to do new work (ADR-0012). The structure is judged on a single metric: how few files an agent reads before correctly placing a new change. Function-named roles + inventory-driven OS dispatch is the lowest-information-loss shape: an agent reads `AGENTS.md § 3` (the table), the relevant role's `defaults/main.yml` + `tasks/main.yml` (or per-OS taskfile when the split lands) — two-to-three reads, end-to-end, for "where does my new macOS default go" or "where does my new Debian package install go."
 
 Workstation heterogeneity across the fleet (multiple OS families, multiple form factors) does not multiply the role tree — it multiplies the per-OS taskfiles inside existing roles. ADR-0008's 5-role lock holds.
 
@@ -52,8 +52,8 @@ Workstation heterogeneity across the fleet (multiple OS families, multiple form 
 - Adding a Windows workstation today is supported in *shape* but unsupported in *practice* — the `/literature` found zero exemplars. Realistic path: out-of-band (Chocolatey / winget) with an inventory stub + runbook in `docs/runbooks/`.
 - Per-host `host_vars/` files are thin (overrides only). Heavy logic lives in roles and group_vars.
 - `terraform/<vendor>/` absorbs new vendors with one `mkdir`. No re-org churn.
-- Eight per-directory READMEs land alongside this ADR to keep the local conventions discoverable.
-- All five planned moves landed across this commit cycle: `terraform/*.tf` → `terraform/cloudflare/*.tf` (`a2d0dcd`); `docs/manual-steps.md` → `docs/runbooks/manual-steps.md` (`e458f29`); legacy in-file annotations (`520ca0e`); and the three relocations (`ansible/` → `legacy/ansible/`, `ubuntu-server/` → `cloud-init/`, Nextra files → `docs/site/`). The legacy moves landed *without* completing the parity-verification protocol — Z's NUCs/Pis are working as intended and re-running the legacy plays just to satisfy a paper protocol was higher cost than benefit. Legacy file headers and `legacy/ansible/README.md` enumerate what to verify *when* the plays are next run; the protocol lives there for that day.
+- All five planned moves landed across this commit cycle: `terraform/*.tf` → `terraform/cloudflare/*.tf` (`a2d0dcd`); `docs/manual-steps.md` → `docs/runbooks/manual-steps.md` (`e458f29`); legacy in-file annotations (`520ca0e`); and the three relocations (`ansible/` → `legacy/ansible/`, `ubuntu-server/` → `cloud-init/`, Nextra files → `docs/site/`). The legacy moves landed *without* completing the parity-verification protocol — Z's NUCs/Pis are working as intended and re-running the legacy plays just to satisfy a paper protocol was higher cost than benefit. Legacy file headers enumerate what to verify *when* the plays are next run; the protocol lives there for that day.
+- The per-directory READMEs that landed with this ADR (and the four per-role READMEs added with each role-skeleton commit) were retired in a follow-up — AGENTS.md §3 is the only layout contract, file headers carry the rest. The IA decision (the three structural rules above) stands; per-directory README scaffolding was a consequence, not the decision.
 
 ## ADR-0012: `CHANGELOG.md` is a deterministic artifact; no LLM-generated changelogs
 **Date:** 2026-04-25
@@ -152,7 +152,7 @@ A 2026-04-25 `/literature` brief (`.tmp/2026-04-25-versioning-infra-playbooks/li
 ## ADR-0002: Ansible, not nix-darwin / chezmoi / pyinfra / shell
 **Date:** 2026-04-24
 **Status:** Accepted
-**Decision:** Ansible is the configuration-management tool for the entire fleet (Mac master + Pis + NUCs + NAS), with inventory groups (`master`, `pis`, `nucs`, `nas`) and group-scoped roles.
+**Decision:** Ansible is the configuration-management tool for the entire fleet (Mac master + Pis + NUCs + NAS), with inventory groups (`workstations`, `pis`, `nucs`, `nas`) and group-scoped roles.
 **Alternatives:**
 - **nix-darwin**: most declarative but Mac-only; would require a second tool for Linux hosts.
 - **chezmoi**: dotfiles-scoped; insufficient for service config, brew bundles, launchd state.
@@ -164,7 +164,7 @@ A 2026-04-25 `/literature` brief (`.tmp/2026-04-25-versioning-infra-playbooks/li
 ## ADR-0001: One Ansible repo for the whole fleet; extend `automated-homelab-deployment`
 **Date:** 2026-04-24
 **Status:** Accepted
-**Decision:** This repo (`automated-homelab-deployment`) is the single source of truth for lab configuration. The Mac Studio master node joins as a new inventory group (`master`), with Mac-specific roles scoped `hosts: master` only. No parallel `homelab-master` repo is created.
+**Decision:** This repo (`automated-homelab-deployment`) is the single source of truth for lab configuration. The Mac Studio master node joins as a new inventory group (`workstations`), with Mac-specific roles scoped `hosts: workstations` only. No parallel `homelab-master` repo is created.
 **Alternatives:**
 - Create a new `homelab-master` repo for the Mac, keep `automated-homelab-deployment` NUC-only.
 - Split further into per-concern repos (`llm-serving`, `fleet-config`, …) coordinated loosely.

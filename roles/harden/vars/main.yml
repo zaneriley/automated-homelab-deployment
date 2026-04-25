@@ -27,7 +27,7 @@
 #     Standalone single-player apps work fine.
 #
 # To carve out an exception on a specific host: override
-# `harden_launchctl_disable_labels` in `group_vars/master.yml` (your
+# `harden_launchctl_disable_labels` in `group_vars/workstations.yml` (your
 # gitignored override) with a tweaked list.
 
 harden_launchctl_disable_labels:

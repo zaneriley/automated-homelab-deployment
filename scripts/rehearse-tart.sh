@@ -133,7 +133,7 @@ cat > "$INV_FILE" <<EOF
 # the image by make rehearse-base so no become_password is needed.
 all:
   children:
-    master:
+    workstations:
       hosts:
         rehearsal-vm:
           ansible_host: $VM_IP

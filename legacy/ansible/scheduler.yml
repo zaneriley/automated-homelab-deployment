@@ -3,7 +3,6 @@
 # Parity with the new role-shaped harness has NOT been verified.
 # Moved to legacy/ansible/ per ADR-0013 — path-correct on paper, NOT yet runtime-verified.
 # At next NUC run, verify template:/vars_files: paths + cloud-init/ refs (was ubuntu-server/).
-# See legacy/ansible/README.md for the parity protocol.
 #
 # ─── ARCHITECTURE PIVOT (2026-04-25) ─────────────────────────────────
 # This pattern — "deploy a cron *on each host* that runs a local

@@ -1,6 +1,6 @@
 ---
 # Harden role defaults (ADR-0003 — three layers, blast radius increases with layer).
-# Override via group_vars/master.yml.
+# Override via group_vars/workstations.yml.
 
 # Layer 1 — disable: launch agents, Dock cleanup, iCloud sync toggles where scriptable.
 harden_apple_cruft_disable: true
