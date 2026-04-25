@@ -19,10 +19,12 @@ Commit convention: [Conventional Commits 1.0.0](https://www.conventionalcommits.
 ### System defaults
 - 12 baseline macOS defaults via osx_defaults ([`127fc40`](https://github.com/zaneriley/automated-homelab-deployment/commit/127fc40fa967073cdcd645bfe8d3aed53fa71eff))
 - Always-on workstation — disable screen lock, key-repeat QoL, caffeinate LaunchAgent ([`616fff5`](https://github.com/zaneriley/automated-homelab-deployment/commit/616fff5287ae1af428e405fa6d10879e70bd8e0f))
+- Race-resistant LaunchAgent reload + parent-dir guard ([`ee1df72`](https://github.com/zaneriley/automated-homelab-deployment/commit/ee1df7276d83524fb3993c3d90c8481acc71fb9e))
 
 
 ### Shell env
 - Ghostty + Zed configs, JetBrainsMono Nerd Font Mono, Melange Dark ([`30485c3`](https://github.com/zaneriley/automated-homelab-deployment/commit/30485c37aa5ffcae46e5df5b301451fef8daa11b))
+- Data-driven dotfile loop ([`802ea29`](https://github.com/zaneriley/automated-homelab-deployment/commit/802ea2918409758b8c095aa7327e80ac0d197b31))
 
 
 ### Harden
@@ -44,6 +46,7 @@ Commit convention: [Conventional Commits 1.0.0](https://www.conventionalcommits.
 - Move overridable lists from vars/ to defaults/ ([`bb9e7ec`](https://github.com/zaneriley/automated-homelab-deployment/commit/bb9e7ecf17530b6538cbdfed302ce5ec08c8fd31))
 - Defer fact-gathering until after CLT preflight ([`6de42d0`](https://github.com/zaneriley/automated-homelab-deployment/commit/6de42d037d28bf295493df2384d4b70a178032fe))
 - Replace fragile substring probes with parsed lists + failed_when guards ([`fc9a716`](https://github.com/zaneriley/automated-homelab-deployment/commit/fc9a716d5c4490f6c5c9d9a53dbfe0b186520489))
+- Scope Restart Dock to Dock-key changes; lift handler to play-level ([`e31e1bf`](https://github.com/zaneriley/automated-homelab-deployment/commit/e31e1bf48c5af78b2f73e18e478fdb31cde4caec))
 
 
 ### Decisions (ADRs)
@@ -56,5 +59,6 @@ Commit convention: [Conventional Commits 1.0.0](https://www.conventionalcommits.
 - AGENTS.md §3 + ADRS.md cross-doc updates after IA reorg moves ([`da7f4fe`](https://github.com/zaneriley/automated-homelab-deployment/commit/da7f4feb900e97575312434cf0aba8ca5b9d8aff))
 - Annotate backup architecture pivot — Mac as central cron, NAS subsystem ([`f297298`](https://github.com/zaneriley/automated-homelab-deployment/commit/f29729882303fc653378ef17bb7d7a8318c97214))
 - Rewrite README from V1-legacy to current Mac-Studio-master-node scope ([`56d86a6`](https://github.com/zaneriley/automated-homelab-deployment/commit/56d86a6e018eb9dbd32c5455eaeca32291ca9cac))
+- AGENTS.md §3 covers every tracked top-level entry; drop rotting backlog SHAs ([`e85eb6c`](https://github.com/zaneriley/automated-homelab-deployment/commit/e85eb6c5a0dbbb717aaa1709fd424a40c658435f))
 
 
