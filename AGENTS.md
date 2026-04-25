@@ -37,7 +37,37 @@ Detailed rationale in [`ADRS.md`](./ADRS.md).
 
 ---
 
-## 3. Backlog
+## 3. Repo information architecture
+
+The directory tree, with one-line purpose for each top-level entry. Local conventions live in per-directory READMEs.
+
+| Path | Purpose | Local rules in |
+|---|---|---|
+| `inventory/` | WHO — host groups by purpose; OS resolved at runtime via `ansible_os_family` | `inventory/README.md` |
+| `roles/` | WHAT — function-named, OS-dispatched inside via `import_tasks: "{{ ansible_os_family }}.yml"` | `roles/README.md` |
+| `dotfiles/` | Ansible role payload (NOT chezmoi/stow); symlinked into `~/.config/<tool>/` by `shell_env` | `dotfiles/README.md` |
+| `scripts/` | Operator helpers (Tart rehearsal today); prefer role-internal for new ones | `scripts/README.md` |
+| `terraform/<vendor>/` | Per-vendor declarative state (Cloudflare today; Tailscale next) | `terraform/README.md` |
+| `cloud-init/` *(currently `ubuntu-server/`; rename pending)* | Linux-fleet provisioning seed; cloud-init user-data + meta-data | `ubuntu-server/README.md` |
+| `docs/runbooks/` | Human procedures (canonical) — `manual-steps.md`, future how-tos | `docs/README.md` |
+| `docs/site/` | Nextra documentation site (publishes from `runbooks/`, doesn't duplicate) | `docs/README.md` |
+| `legacy/` *(rename of `ansible/`; pending parity verification)* | Frozen pre-Mac-Studio content | `ansible/README.md` |
+
+**Locked structural decisions:** ADR-0013 (this layout), ADR-0008 (5 lifecycle-aligned roles), ADR-0001 (single Ansible repo for the whole fleet), ADR-0012 (orientation triad at root).
+
+**Why this shape:** function-named roles + facts-based OS dispatch is the dominant pattern in heterogeneous-fleet IaC repos. See **ADR-0013** for the convergence trace (5 IA proposals → multi-OS `/literature` brief → 5 peer reviews).
+
+**Pending moves** (gated):
+- `ansible/` → `legacy/ansible/` — gated by the parity-verification protocol (ADR-0013)
+- `ubuntu-server/` → `cloud-init/` — gated alongside the legacy move (legacy `ansible/setup_nuc.yml` may reference paths under `ubuntu-server/`)
+- `terraform/*.tf` → `terraform/cloudflare/*.tf` — safe internal reorg; sequencing TBD
+- `docs/manual-steps.md` → `docs/runbooks/manual-steps.md`; Nextra files into `docs/site/` — sequencing TBD
+
+The READMEs reflect the intended state; current state is signposted explicitly in each.
+
+---
+
+## 4. Backlog
 
 Order matters. Do them in order. Cross off as done.
 
@@ -72,7 +102,7 @@ Order matters. Do them in order. Cross off as done.
 
 ---
 
-## 4. How we work — acceptance gates
+## 5. How we work — acceptance gates
 
 Three nested levels. A change doesn't land unless it clears the relevant gate(s).
 
@@ -124,7 +154,7 @@ The harness is "working" when:
 
 ---
 
-## 5. References
+## 6. References
 
 - **[`ADRS.md`](./ADRS.md)** — decision log; read this to understand *why* a thing is the way it is. Append-only. Supersede old entries rather than delete.
 - **[`CHANGELOG.md`](./CHANGELOG.md)** — timeline of what landed when, grouped by role scope. Generated from Conventional Commits by `git-cliff` (see [ADR-0012](./ADRS.md)). Third orientation leg: ADRS explains *why*, AGENTS defines *what should be true*, CHANGELOG records *when*. Regenerate with `make changelog`; verify with `make changelog-check`. Never hand-edit.

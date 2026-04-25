@@ -17,6 +17,44 @@ Format:
 
 ---
 
+## ADR-0013: Repo information architecture — function-named roles + facts-based OS dispatch + tool/vendor partition
+**Date:** 2026-04-25
+**Status:** Accepted
+**Decision:** Adopt a flat top-level layout with three load-bearing rules:
+
+1. **Roles are function-named, never OS-prefixed.** OS dispatch lives inside each role via `import_tasks: "{{ ansible_os_family }}.yml"`. The `tasks/<OsFamily>.yml` pattern (`Darwin`, `Debian`, `RedHat`, `Windows`) replaces parallel `_mac/` / `_fleet/` role trees.
+2. **Inventory groups are by purpose, not OS.** `workstations`, `nucs`, `pis`, `nas` — heterogeneous by design. OS is computed from facts at runtime, never encoded in path.
+3. **Tool/vendor declarative state lives in tool-named top-level dirs with vendor sub-dirs.** `terraform/cloudflare/` today, `terraform/tailscale/` when ratified-but-deferred lands. The vendor name is a sub-dir, not the dir.
+
+The full top-level layout is documented in `AGENTS.md` § 3. Eight per-directory `README.md` files carry local conventions (var precedence, OS-scoping rules, payload-vs-role-internal placement, junk-drawer cliff for `scripts/`).
+
+**Alternatives considered (and rejected):**
+- **DDD bounded-context neighborhoods** (`workstation/`, `fleet/`, `edge/`, `ops/`, `secrets/`) — over-engineered for current scale; agent 1 of the IA fan-out flagged this against itself in §7.
+- **`_mac/` / `_fleet/` role-name prefixes** — double-codes information already in `inventory/` + `ansible_os_family`. The `/literature` confirmed nobody in the field uses this pattern; `meta/main.yml platforms` is deprecated/ignored.
+- **`cloudflare/` as a top-level dir** (vendor-named) — collapses the moment a second vendor arrives. 4 of 5 peer reviewers independently rejected this in favor of `terraform/<vendor>/`.
+- **`infra/` umbrella over `terraform/` + `cloud-init/`** — speculative grouping; only 2 occupants today; ADR-0011 / minimalist agent rejects scaffolding for future content.
+- **Per-host top-level playbooks** — `/literature` p101+p102+p107 converge on thin-host-files + shared-roles; per-host playbooks rot at >5 hosts.
+- **Renaming `ansible/` → `legacy/ansible/` immediately** — accepted in principle but gated by the parity-verification protocol; 5/5 IA reviewers proposed the same gate.
+
+**Convergence path** (artifacts that produced this decision; ephemeral, retained as long as useful):
+- 2026-04-25 IA proposal fan-out — 5 Opus agents (DDD purist / onboarding-first / LLM-orientation-first / scale-out / minimalist) at `.tmp/2026-04-25-ia-proposals/`
+- 2026-04-25 multi-OS-workstation-fleet-ia `/literature` brief — 25 sources at `.tmp/2026-04-25-multi-os-workstation-fleet-ia/literature/`. Convergent finding: function-named roles + `ansible_os_family` dispatch is the dominant pattern; the multi-user-family-Macs case is unmodeled in public; Windows-via-Ansible workstations are a wasteland.
+- 2026-04-25 IA peer-review fan-out — 5 Sonnet reviewers (MECE rigor / naming honesty / multi-vendor scaling / root-placement criterion / first-principles re-derivation) at `.tmp/2026-04-25-ia-peer-review/`. Convergent corrections: keep `terraform/` (don't rename to `cloudflare/`); `dotfiles/` semantics need clarification; `scripts/` has a junk-drawer cliff at ~3 distinct domains; `cloud-init/` Linux-only scope needs a README signal.
+
+The compressed essence above is the durable artifact. The `.tmp/` files are forensic — kept locally as long as useful, deletable thereafter without losing the decision.
+
+**Rationale.** The repo's primary audience is an LLM cold-loading to do new work (ADR-0012). The structure is judged on a single metric: how few files an agent reads before correctly placing a new change. Function-named roles + inventory-driven OS dispatch is the lowest-information-loss shape: an agent reads `AGENTS.md § 3` (the table), the relevant role README, and the relevant per-OS taskfile — three reads, end-to-end, for "where does my new macOS default go" or "where does my new Debian package install go."
+
+Workstation heterogeneity (multiple OS families across the fleet) does not multiply the role tree — it multiplies the per-OS taskfiles inside existing roles. ADR-0008's 5-role lock holds.
+
+**Consequences:**
+- Adding a new OS to an existing role = one new `tasks/<OsFamily>.yml` file. Linear cost.
+- Adding a Windows workstation today is supported in *shape* but unsupported in *practice* — the `/literature` found zero exemplars. Realistic path: out-of-band (Chocolatey / winget) with an inventory stub + runbook in `docs/runbooks/`.
+- Per-host `host_vars/` files are thin (overrides only). Heavy logic lives in roles and group_vars.
+- `terraform/<vendor>/` absorbs new vendors with one `mkdir`. No re-org churn.
+- Eight per-directory READMEs land alongside this ADR to keep the local conventions discoverable.
+- Three pending moves (ansible→legacy, ubuntu-server→cloud-init, terraform .tf into cloudflare/, docs/manual-steps.md→docs/runbooks/) are tracked in AGENTS.md § 3 — gated either by parity verification or sequencing-TBD.
+
 ## ADR-0012: `CHANGELOG.md` is a deterministic artifact; no LLM-generated changelogs
 **Date:** 2026-04-25
 **Status:** Accepted

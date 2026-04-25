@@ -1,9 +1,41 @@
-## Automated Homelab Deployment with Ansible and Terraform
+# docs/
 
-`curl -fsSL https://bun.sh/install | bash # Install bun for macOS, Linux, and WSL`
+Operator-facing prose. Not contract (that's `AGENTS.md`), not decisions (that's `ADRS.md`), not timeline (that's `CHANGELOG.md`).
 
-`bun install`
+## Layout (target)
 
-`bun dev`
+```
+docs/
+├── runbooks/        # canonical human procedures (manual steps, troubleshooting how-tos)
+└── site/            # Nextra-built static documentation site
+```
 
-Change things in `pages` to see the effect.
+## Authoring rule
+
+**Runbooks are canonical. The site INCLUDES from `runbooks/`; it does not duplicate.** A new procedure is authored in `docs/runbooks/<topic>.md`. The Nextra site (`docs/site/pages/`) imports or references that file rather than holding its own copy. This avoids the MECE-overlap flagged by the 2026-04-25 IA peer review.
+
+## What lives where
+
+- iCloud sign-out, FileVault setup, Zed Melange theme install, Apple Intelligence opt-out → `runbooks/manual-steps.md`
+- Future "how do I…" pages → `runbooks/<task>.md`
+- The published static site (Nextra) → `site/`
+
+## Current state
+
+- `manual-steps.md` is currently at `docs/manual-steps.md` (not yet under `runbooks/`).
+- The Nextra site files (`package.json`, `next.config.js`, `pages/`, etc.) are at `docs/` root.
+- Both moves to `docs/runbooks/` and `docs/site/` are pending (sequencing in AGENTS.md § 3).
+
+To run the existing Nextra dev server (until the move):
+
+```sh
+curl -fsSL https://bun.sh/install | bash   # install bun (macOS / Linux / WSL)
+bun install
+bun dev
+```
+
+Edit `pages/*.mdx` to see changes.
+
+## Site publishing — open question
+
+Verify whether the Nextra site is still being published anywhere before investing in the move. If it is not, the Nextra app may be retired entirely (move to `legacy/`). Tracked as an open question in ADR-0013.
