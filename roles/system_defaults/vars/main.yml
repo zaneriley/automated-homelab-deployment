@@ -74,3 +74,8 @@ system_defaults_entries:
     key: VoiceTriggerUserEnabled
     type: bool
     value: false
+  # Global appearance — dark mode
+  - domain: NSGlobalDomain
+    key: AppleInterfaceStyle
+    type: string
+    value: Dark

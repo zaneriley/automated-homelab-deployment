@@ -1,9 +1,38 @@
 ---
 # roles/workstation_tools/tasks/main.yml
-# Placeholder — real tasks (Colima on-demand config, AeroSpace config,
-# 1Password desktop+CLI adoption/verify, gh + dev tooling verify)
-# land in a follow-up commit.
-- name: Workstation_tools role — skeleton placeholder
-  ansible.builtin.debug:
-    msg: "workstation_tools role skeleton; real tasks follow in a later commit."
-  tags: [workstation_tools, skeleton]
+# Default browser, AeroSpace runtime hint, and (in future) Colima on-demand
+# config + 1Password CLI verify. Today: default-browser swap to Zen.
+#
+# AeroSpace + LuLu need TCC permission grants (Accessibility / Network
+# Extension) that cannot be scripted on a SIP-on Mac — those are tracked
+# in docs/runbooks/manual-steps.md. The bundle installs themselves are
+# handled by the bootstrap role's brew bundle reconciliation.
+
+- name: "Workstation_tools — read current default browser"
+  ansible.builtin.command:
+    cmd: "/opt/homebrew/bin/defaultbrowser"
+  register: workstation_tools_default_browser
+  changed_when: false
+  check_mode: false
+  failed_when:
+    - workstation_tools_default_browser.rc != 0
+    - "'No such file or directory' not in (workstation_tools_default_browser.stderr | default(''))"
+  tags: [workstation_tools, default_browser]
+
+# `defaultbrowser` lists installed browsers, prefixing the current default
+# with `* `. We only run the set command when Zen isn't already default,
+# so honest idempotency holds — the second `make check` reports no change
+# once Zen is set.
+#
+# Note: invoking `defaultbrowser zen` triggers a one-time macOS confirmation
+# dialog ("Use Zen?") on the first run. The command itself returns 0
+# regardless; the user must click through. Documented in
+# docs/runbooks/manual-steps.md.
+- name: "Workstation_tools — set Zen as default browser"
+  ansible.builtin.command:
+    cmd: "/opt/homebrew/bin/defaultbrowser zen"
+  when:
+    - workstation_tools_default_browser.stdout is defined
+    - "'* zen' not in workstation_tools_default_browser.stdout"
+  changed_when: true
+  tags: [workstation_tools, default_browser]

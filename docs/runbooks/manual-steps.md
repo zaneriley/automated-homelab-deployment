@@ -80,3 +80,62 @@ If you use Messages for LLM-agent tooling (per AGENTS.md §1 item 1), sign into 
 **Messages.app → Preferences → iMessage → Sign In.**
 
 The harness keeps `Messages.app` installed (ADR-0008 and the `apple_cruft` preserve list) but does not manage the iMessage account state.
+
+---
+
+## AeroSpace — grant Accessibility permission
+
+AeroSpace needs Accessibility access to read window state. macOS gates this behind TCC, which is SIP-protected and cannot be granted via script.
+
+1. Launch **AeroSpace.app** (it lives in `/Applications/AeroSpace.app`; the harness installs it via Brewfile).
+2. AeroSpace will prompt for Accessibility access on first launch. Click through to **System Settings → Privacy & Security → Accessibility**.
+3. Toggle **AeroSpace** on. Click **Use** when re-prompted.
+4. Quit and relaunch AeroSpace if window management feels stale.
+
+Until the toggle is on, AeroSpace runs but its window-management commands are no-ops.
+
+The TOML config lives at `~/.config/aerospace/aerospace.toml` (symlinked from `dotfiles/aerospace/aerospace.toml`). Edits to the symlinked file are live; reload via `alt+shift+c` inside AeroSpace.
+
+---
+
+## LuLu — grant Network Extension permission
+
+LuLu (FLOSS outbound firewall by Objective-See) needs a Network Extension approval that cannot be scripted on a SIP-on Mac.
+
+1. Launch **LuLu.app**.
+2. The first-run wizard prompts for approval. Follow it through to **System Settings → Privacy & Security → Network Extensions** (or **Login Items & Extensions** depending on macOS version) and toggle **LuLu** on. Authenticate with your password / Touch ID when prompted.
+3. LuLu's Activity Monitor and rule database become active after approval.
+4. Optional: in LuLu's preferences, enable **Allow Apple Programs** (default) so first-party Apple binaries don't pop alerts every login.
+
+LuLu's preferences live in `~/Library/Preferences/com.objective-see.lulu.plist` and are scriptable — but the harness doesn't manage them today; the right defaults (block-by-default? passive mode?) need a `/literature` pass before they're ratified. Tracked in AGENTS.md backlog.
+
+---
+
+## Zen — default browser confirmation
+
+The `workstation_tools` role runs `defaultbrowser zen` to set Zen as the system default. macOS shows a one-time confirmation dialog the first time:
+
+> "Do you want to use Zen as your default web browser?"
+
+Click **Use "Zen"**. The setting persists across reboots; you should see no further dialogs unless another app re-asserts default-browser ownership (Safari sometimes does this on macOS major-version upgrades — re-run `make apply` to flip back).
+
+To verify by hand:
+
+```
+defaultbrowser
+```
+
+— a `* zen` line means Zen is currently default.
+
+---
+
+## Removing system apps (Chess, Photos, Calendar, etc.)
+
+These bundles live under `/System/Applications/`, which is SIP-protected. Per ADR-0005, the harness **never** disables SIP and **never** removes system app bundles via script.
+
+Two realistic options:
+
+1. **Suppress, don't remove.** Hide the app from Spotlight / Launchpad / Dock so it stops surfacing. The mechanism (`lsregister -u`, Spotlight Privacy plist, `mdutil` exclusions) is unsettled — tracked in AGENTS.md backlog as a `/literature`-gated task.
+2. **Remove via Recovery + SIP off** (manual, expressly opt-in). Boot into Recovery → Terminal → `csrutil disable` → reboot → `sudo rm -rf /System/Applications/Chess.app` (or others) → reboot to Recovery → `csrutil enable` → reboot. Apple may restore removed system apps on the next macOS update; expect to redo. The harness does not script any of this; if you want it, it is a one-time-per-install human procedure.
+
+The `harden` role already addresses the *behavioral* side — supporting daemons (`com.apple.gamed`, `com.apple.photoanalysisd`, `com.apple.calaccessd`, etc.) are launchctl-disabled at user scope, so the apps' background work stops at next login even if the bundles stay on disk.

@@ -14,6 +14,7 @@ brew "git-cliff"                        # CHANGELOG.md generator (ADR-0012)
 
 # === Dev tooling ===
 brew "gh"
+brew "defaultbrowser"   # used by workstation_tools to set Zen as default; see roles/workstation_tools/
 
 # === Containers (on-demand; not launched at boot) ===
 brew "colima"

@@ -1,0 +1,90 @@
+# AeroSpace configuration
+# Symlinked from <repo>/dotfiles/aerospace/aerospace.toml by shell_env role.
+# Edit this file directly — it is the source of truth, no render step.
+#
+# Permission requirement: AeroSpace needs Accessibility access to read window
+# state. macOS gates this behind a one-time GUI confirmation in
+# System Settings → Privacy & Security → Accessibility (TCC, SIP-protected).
+# See docs/runbooks/manual-steps.md.
+
+# Register a launchd entry on first run so AeroSpace starts at login.
+start-at-login = true
+
+# After AeroSpace starts, focus workspace 1 (deterministic startup).
+after-startup-command = ['workspace 1']
+
+# Notify AeroSpace itself on macOS focus changes — keeps focus in sync
+# when apps that AeroSpace doesn't directly manage steal focus.
+on-focus-changed = ['move-mouse window-lazy-center']
+
+# Gaps between tiled windows.
+[gaps]
+inner.horizontal = 8
+inner.vertical = 8
+outer.left = 8
+outer.right = 8
+outer.top = 8
+outer.bottom = 8
+
+# Default binding mode. Most i3-style; alt is the modifier (cmd is reserved
+# for macOS app shortcuts). Add or rebind here as preferences emerge.
+[mode.main.binding]
+
+# Focus by direction (h / j / k / l)
+alt-h = 'focus left'
+alt-j = 'focus down'
+alt-k = 'focus up'
+alt-l = 'focus right'
+
+# Move focused window
+alt-shift-h = 'move left'
+alt-shift-j = 'move down'
+alt-shift-k = 'move up'
+alt-shift-l = 'move right'
+
+# Resize: enter resize mode, then h/j/k/l, escape to exit.
+alt-r = 'mode resize'
+
+# Workspaces 1–9
+alt-1 = 'workspace 1'
+alt-2 = 'workspace 2'
+alt-3 = 'workspace 3'
+alt-4 = 'workspace 4'
+alt-5 = 'workspace 5'
+alt-6 = 'workspace 6'
+alt-7 = 'workspace 7'
+alt-8 = 'workspace 8'
+alt-9 = 'workspace 9'
+
+# Move focused window to workspace + follow it
+alt-shift-1 = ['move-node-to-workspace 1', 'workspace 1']
+alt-shift-2 = ['move-node-to-workspace 2', 'workspace 2']
+alt-shift-3 = ['move-node-to-workspace 3', 'workspace 3']
+alt-shift-4 = ['move-node-to-workspace 4', 'workspace 4']
+alt-shift-5 = ['move-node-to-workspace 5', 'workspace 5']
+alt-shift-6 = ['move-node-to-workspace 6', 'workspace 6']
+alt-shift-7 = ['move-node-to-workspace 7', 'workspace 7']
+alt-shift-8 = ['move-node-to-workspace 8', 'workspace 8']
+alt-shift-9 = ['move-node-to-workspace 9', 'workspace 9']
+
+# Layout toggles
+alt-slash = 'layout tiles horizontal vertical'
+alt-comma = 'layout accordion horizontal vertical'
+
+# Fullscreen the focused window
+alt-f = 'fullscreen'
+
+# Flatten the workspace's tree (recovers from awkward layouts)
+alt-shift-r = 'flatten-workspace-tree'
+
+# Reload this config (useful while iterating)
+alt-shift-c = 'reload-config'
+
+# Resize mode — enter via alt-r, exit with esc / enter
+[mode.resize.binding]
+h = 'resize width -50'
+j = 'resize height +50'
+k = 'resize height -50'
+l = 'resize width +50'
+enter = 'mode main'
+esc = 'mode main'

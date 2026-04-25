@@ -94,6 +94,8 @@ Order matters. Do them in order. Cross off as done.
 - [ ] Refactor `legacy/ansible/setup_nuc.yml` into NUC-scoped roles in this repo
 - [ ] V1 legacy `homelab.family` forensic cleanup (missing Home Assistant container, orphaned AppDaemon, MQTT / DNS clarifications)
 - [ ] DoH Pi for internal DNS (candidates: Technitium, Pi-hole+Unbound, AdGuard Home)
+- [ ] System-app suppression (Chess, Photos, Calendar, etc. — bundles in `/System/Applications/` are SIP-protected per ADR-0005; suppression rather than removal). Pending `/literature` to settle the mechanism: `lsregister -u`, Spotlight Privacy plist, `mdutil` exclusions, or a combination.
+- [ ] LuLu preferences ratification — preferences plist (`com.objective-see.lulu`) is scriptable, but the right defaults (block-by-default? passive mode? alert-vs-allow for Apple binaries?) need a `/literature` pass before being baked in.
 - [ ] Tailscale — add when there's a fleet host that needs remote reach; decision-ready (Tailscale over Headscale) but not installed
 - [ ] On-device LLM serving (Ollama) — add when a concrete workflow needs it; Mac-local initially, a future (redacted) handles fine-tuning
 

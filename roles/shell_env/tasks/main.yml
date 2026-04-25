@@ -34,3 +34,18 @@
     state: link
     force: true
   tags: [shell_env, zed]
+
+- name: "Shell_env —ensure ~/.config/aerospace exists"
+  ansible.builtin.file:
+    path: "{{ ansible_env.HOME }}/.config/aerospace"
+    state: directory
+    mode: "0755"
+  tags: [shell_env, aerospace]
+
+- name: "Shell_env —symlink ~/.config/aerospace/aerospace.toml to repo dotfile"
+  ansible.builtin.file:
+    src: "{{ playbook_dir }}/dotfiles/aerospace/aerospace.toml"
+    dest: "{{ ansible_env.HOME }}/.config/aerospace/aerospace.toml"
+    state: link
+    force: true
+  tags: [shell_env, aerospace]
