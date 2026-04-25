@@ -44,6 +44,9 @@ host_vars/*.yml
 # Research / scratch artifacts (literature reviews, planning docs)
 .tmp/
 
+# Per-machine agent tooling (Claude Code state, conversation transcripts, etc.)
+.claude/
+
 # Terraform
 .terraform/
 *.tfstate
