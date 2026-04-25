@@ -16,7 +16,7 @@ When `harden_apple_cruft_delete_bundles: true` is set in `group_vars/master.yml`
 
 `/Applications/{GarageBand,iMovie,Keynote,Numbers,Pages}.app` are removed via `ansible.builtin.file: state=absent` with `become: true`. The list lives in `vars/main.yml` (`harden_apple_cruft_bundles`).
 
-These five are the only consumer Apple bundles that ship under `/Applications/` on a clean install — Music/TV/News/Maps/Stocks/Photos/Podcasts/etc. are all under `/System/Applications/` and are **deliberately out of scope** per ADR-0005 (SIP stays on; system bundles are not scripted). For those, see `docs/manual-steps.md` (Recovery-mode procedure, expressly opt-in and manual).
+These five are the only consumer Apple bundles that ship under `/Applications/` on a clean install — Music/TV/News/Maps/Stocks/Photos/Podcasts/etc. are all under `/System/Applications/` and are **deliberately out of scope** per ADR-0005 (SIP stays on; system bundles are not scripted). For those, see `docs/runbooks/manual-steps.md` (Recovery-mode procedure, expressly opt-in and manual).
 
 `state: absent` is honestly idempotent: first apply removes, second reports unchanged. Mac App Store will offer to reinstall any bundle bought under Z's Apple ID — accept the loop: re-apply removes again, no special handling.
 
@@ -45,7 +45,7 @@ What's NOT addressed by Layer 1 (intentionally):
 - Spotlight / Launchpad still surface the apps as launchable — a future commit will add Spotlight exclusion
 - The system-app bundles themselves (system-app *removal* is forbidden by ADR-0005 because it requires SIP-off + Recovery boot, which we don't do)
 
-### Layer 1 — manual follow-ups (tracked in `docs/manual-steps.md`)
+### Layer 1 — manual follow-ups (tracked in `docs/runbooks/manual-steps.md`)
 
 - Full iCloud sign-out (Apple requires an interactive password + Find-My confirmation)
 - iCloud Drive Desktop/Documents folder sync toggle

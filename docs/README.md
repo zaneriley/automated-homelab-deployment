@@ -22,9 +22,9 @@ docs/
 
 ## Current state
 
-- `manual-steps.md` is currently at `docs/manual-steps.md` (not yet under `runbooks/`).
-- The Nextra site files (`package.json`, `next.config.js`, `pages/`, etc.) are at `docs/` root.
-- Both moves to `docs/runbooks/` and `docs/site/` are pending (sequencing in AGENTS.md § 3).
+- `manual-steps.md` is now at `docs/runbooks/manual-steps.md` (canonical location per ADR-0013).
+- The Nextra site files (`package.json`, `next.config.js`, `pages/`, etc.) are still at `docs/` root.
+- The Nextra → `docs/site/` move is pending (sequencing in AGENTS.md § 3).
 
 To run the existing Nextra dev server (until the move):
 
