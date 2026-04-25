@@ -58,12 +58,15 @@ The directory tree, with one-line purpose for each top-level entry. Local conven
 **Why this shape:** function-named roles + facts-based OS dispatch is the dominant pattern in heterogeneous-fleet IaC repos. See **ADR-0013** for the convergence trace (5 IA proposals → multi-OS `/literature` brief → 5 peer reviews).
 
 **Pending moves** (gated):
-- `ansible/` → `legacy/ansible/` — gated by the parity-verification protocol (ADR-0013)
-- `ubuntu-server/` → `cloud-init/` — gated alongside the legacy move (legacy `ansible/setup_nuc.yml` may reference paths under `ubuntu-server/`)
-- `terraform/*.tf` → `terraform/cloudflare/*.tf` — safe internal reorg; sequencing TBD
-- `docs/manual-steps.md` → `docs/runbooks/manual-steps.md`; Nextra files into `docs/site/` — sequencing TBD
+- `ansible/` → `legacy/ansible/` — gated by the parity-verification protocol (ADR-0013); legacy files now carry in-file ADR-0013 + parity warnings (`520ca0e`)
+- `ubuntu-server/` → `cloud-init/` — gated alongside the legacy move; legacy files annotated as above
+- Nextra files (`docs/{package.json,next.config.js,pages/,…}`) → `docs/site/` — gated by "is the Nextra site still being published anywhere?"
 
-The READMEs reflect the intended state; current state is signposted explicitly in each.
+**Completed moves:**
+- `terraform/*.tf` → `terraform/cloudflare/*.tf` (`a2d0dcd`)
+- `docs/manual-steps.md` → `docs/runbooks/manual-steps.md` (`e458f29`)
+
+The READMEs reflect the current state; pending moves are signposted in the affected directories' READMEs.
 
 ---
 

@@ -53,7 +53,7 @@ Workstation heterogeneity (multiple OS families across the fleet) does not multi
 - Per-host `host_vars/` files are thin (overrides only). Heavy logic lives in roles and group_vars.
 - `terraform/<vendor>/` absorbs new vendors with one `mkdir`. No re-org churn.
 - Eight per-directory READMEs land alongside this ADR to keep the local conventions discoverable.
-- Three pending moves (ansible→legacy, ubuntu-server→cloud-init, terraform .tf into cloudflare/, docs/manual-steps.md→docs/runbooks/) are tracked in AGENTS.md § 3 — gated either by parity verification or sequencing-TBD.
+- Two of the five planned moves landed in this commit cycle (`terraform/*.tf` → `terraform/cloudflare/*.tf`; `docs/manual-steps.md` → `docs/runbooks/manual-steps.md`). The remaining three (`ansible/` → `legacy/ansible/`, `ubuntu-server/` → `cloud-init/`, Nextra files → `docs/site/`) are tracked in AGENTS.md § 3 — gated by parity verification (first two) or by the "is the site still published?" question (third). Legacy files now carry in-file ADR-0013 + parity warnings to complement the directory-level READMEs.
 
 ## ADR-0012: `CHANGELOG.md` is a deterministic artifact; no LLM-generated changelogs
 **Date:** 2026-04-25
@@ -126,7 +126,7 @@ A 2026-04-25 `/literature` brief (`.tmp/2026-04-25-versioning-infra-playbooks/li
 ## ADR-0005: SIP stays on; `/System/Applications/*` removal is manual-only
 **Date:** 2026-04-24
 **Status:** Accepted
-**Decision:** System Integrity Protection (SIP) is never disabled as part of any Ansible role. System-app bundles under `/System/Applications/` are not removed from playbooks; if removal is desired, it is a one-time manual procedure documented in `docs/manual-steps.md` (when that file is created).
+**Decision:** System Integrity Protection (SIP) is never disabled as part of any Ansible role. System-app bundles under `/System/Applications/` are not removed from playbooks; if removal is desired, it is a one-time manual procedure documented in `docs/runbooks/manual-steps.md`.
 **Alternatives:** Provide a layer-4 `apple_cruft` play that boots into Recovery, runs `csrutil disable`, deletes `/System/Applications/*.app`, re-enables SIP.
 **Rationale:** SIP disable requires a Recovery-mode boot outside Ansible's reach. Removed system apps reappear or break on OS updates. The cost-benefit of nuking `/System/Applications/Chess.app` doesn't justify trading away kernel-level integrity protection.
 
