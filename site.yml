@@ -4,7 +4,13 @@
 
 - name: Workstations (Mac Studio master node, future workstation hosts)
   hosts: workstations
-  gather_facts: true
+  # gather_facts: false — fact-gathering is deferred to the `bootstrap`
+  # role's `setup` task, which runs *after* the Xcode Command Line Tools
+  # preflight. Pre-fix, gather_facts: true ran `setup` before any role
+  # tasks; on a truly fresh macOS the /usr/bin/python3 stub triggers a
+  # GUI install dialog and `setup` fails opaquely before bootstrap's
+  # helpful "run bootstrap.sh" preflight ever surfaces.
+  gather_facts: false
   roles:
     - bootstrap
     - system_defaults

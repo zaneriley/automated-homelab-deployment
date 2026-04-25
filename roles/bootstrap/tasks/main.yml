@@ -29,6 +29,16 @@
   when: not bootstrap_brew_stat.stat.exists
   tags: [bootstrap, preflight]
 
+# Gather facts here, *after* CLT + Homebrew preflight passed. The play
+# sets `gather_facts: false` so this is the first fact-population step.
+# Reason: `setup` requires `/usr/bin/python3` working, and on a fresh
+# macOS that path is a stub that triggers a GUI CLT install dialog —
+# running `setup` before the CLT preflight surfaces a useless error
+# before the helpful "run ./bootstrap.sh" message ever appears.
+- name: Preflight — gather facts (after CLT confirmed present)
+  ansible.builtin.setup:
+  tags: [bootstrap, preflight, always]
+
 - name: Preflight — verify current user is in the admin group
   ansible.builtin.command:
     cmd: "dseditgroup -o checkmember -m {{ ansible_env.USER }} admin"
