@@ -89,6 +89,7 @@ Order matters. Do them in order. Cross off as done.
 - [ ] Migrate `legacy/ansible/setup_nuc.yml` secrets from Ansible Vault → `onepassword` lookup
 
 **Later**
+- [ ] **Rethink backup architecture.** Replace the legacy per-NUC cron (`legacy/ansible/scheduler.yml` deploys cron on each NUC) with Mac-Studio-driven orchestration: cron lives on the master node and SSHes out to fleet hosts. Gated by NAS subsystem work-in-progress. Targets in scope: NUCs (Immich data, Home Assistant config, media metadata), Pis. Out of scope this round: cloud backups (S3, Backblaze) — separate decision.
 - [ ] Populate `homelab-household-management` repo for a dedicated NUC (Immich, Home Assistant)
 - [ ] Refactor `legacy/ansible/setup_nuc.yml` into NUC-scoped roles in this repo
 - [ ] V1 legacy `homelab.family` forensic cleanup (missing Home Assistant container, orphaned AppDaemon, MQTT / DNS clarifications)

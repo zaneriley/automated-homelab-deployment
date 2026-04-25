@@ -38,3 +38,7 @@ If/when the protocol does run:
 ## Why frozen
 
 Z's NUCs are working as intended. The cost of a parity protocol that breaks something is higher than the cost of leaving the legacy playbooks where they are with clear "this is legacy" signage. ADR-0013.
+
+## Architecture pivot — backups (out-of-band note)
+
+The `scheduler.yml` + `backup.yml` pair (cron-on-each-NUC pattern) is being retired in favour of Mac-Studio-driven orchestration: the cron lives on the master node and SSHes out to fleet hosts to run backups. Two drivers: (1) NAS subsystem work-in-progress, and (2) the centralised model is consistent with ADR-0001 ("one harness for the whole fleet"). See `scheduler.yml`'s `ARCHITECTURE PIVOT` block for the full rationale and the AGENTS.md `Later` backlog item that tracks the rethink.

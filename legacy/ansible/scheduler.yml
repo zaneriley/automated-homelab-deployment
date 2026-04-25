@@ -4,6 +4,25 @@
 # Moved to legacy/ansible/ per ADR-0013 — path-correct on paper, NOT yet runtime-verified.
 # At next NUC run, verify template:/vars_files: paths + cloud-init/ refs (was ubuntu-server/).
 # See legacy/ansible/README.md for the parity protocol.
+#
+# ─── ARCHITECTURE PIVOT (2026-04-25) ─────────────────────────────────
+# This pattern — "deploy a cron *on the NUC* that runs a local
+# ansible-playbook" — is being retired. The Mac Studio (master node)
+# will drive the backup cron centrally and SSH out to fleet hosts.
+# Reasons:
+#   1. NAS subsystem work-in-progress
+#      anyway, so there is no urgency to preserve the deployed cron.
+#   2. Centralising on the master node is consistent with ADR-0001
+#      ("one harness for the whole fleet") — the scheduler runs from
+#      one place that knows which fleet hosts are reachable, instead
+#      of each host scheduling its own.
+#   3. The current pattern hardcodes /srv/nucs/<path> on the NUC
+#      (see PATH WARNING below); centralising avoids that on-host
+#      path coupling entirely.
+# Until the rethink lands and the NAS is repaired, do NOT redeploy
+# this play. Cron jobs already installed on existing NUCs will fail
+# silently (NAS down) — acceptable until the new design ships.
+# Tracked: AGENTS.md § 4 (Later — backup architecture rethink).
 - name: Configure Backup Cron Job
   hosts: localhost
   become: yes
