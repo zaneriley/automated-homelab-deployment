@@ -18,6 +18,7 @@ Commit convention: [Conventional Commits 1.0.0](https://www.conventionalcommits.
 
 ### System defaults
 - 12 baseline macOS defaults via osx_defaults ([`127fc40`](https://github.com/zaneriley/automated-homelab-deployment/commit/127fc40fa967073cdcd645bfe8d3aed53fa71eff))
+- Always-on workstation — disable screen lock, key-repeat QoL, caffeinate LaunchAgent ([`616fff5`](https://github.com/zaneriley/automated-homelab-deployment/commit/616fff5287ae1af428e405fa6d10879e70bd8e0f))
 
 
 ### Shell env
