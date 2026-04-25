@@ -19,7 +19,9 @@
 
 - name: "Workstation_tools — fail if Zen.app missing"
   ansible.builtin.fail:
-    msg: "/Applications/Zen.app not found — `brew bundle` should install the `zen` cask. Re-run ./bootstrap.sh or `brew install --cask zen`."
+    msg: >-
+      /Applications/Zen.app not found — `brew bundle` should install
+      the `zen` cask. Re-run ./bootstrap.sh or `brew install --cask zen`.
   when: not workstation_tools_zen_stat.stat.exists
   tags: [workstation_tools, default_browser]
 
