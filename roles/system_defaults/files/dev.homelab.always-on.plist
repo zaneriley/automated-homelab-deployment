@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  dev.homelab.always-on — user-scope LaunchAgent that keeps the master
+  node awake. Mac Studio in a locked room on ethernet, treated as
+  always-on infrastructure. caffeinate creates power assertions that
+  override pmset's sleep schedule for as long as it runs; KeepAlive +
+  RunAtLoad means the assertion persists across logins and process
+  exits. User-scope avoids the sudo + KVM-no-TouchID dead end that
+  /Library/LaunchDaemons would re-introduce.
+
+  Flags: -d display-sleep-prevented, -i idle-sleep-prevented,
+         -s system-sleep-prevented (only honored on AC power).
+
+  Verify: launchctl print gui/$(id -u)/dev.homelab.always-on
+  Disable: remove this file + `launchctl bootout gui/$(id -u)/dev.homelab.always-on`
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>dev.homelab.always-on</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/usr/bin/caffeinate</string>
+        <string>-d</string>
+        <string>-i</string>
+        <string>-s</string>
+    </array>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+</dict>
+</plist>

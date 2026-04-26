@@ -1,0 +1,64 @@
+---
+# roles/workstation_tools/tasks/main.yml
+# Default browser, AeroSpace runtime hint, and (in future) Colima on-demand
+# config + 1Password CLI verify. Today: default-browser swap to Zen.
+#
+# AeroSpace + LuLu need TCC permission grants (Accessibility / Network
+# Extension) that cannot be scripted on a SIP-on Mac — those are tracked
+# in docs/runbooks/manual-steps.md. The bundle installs themselves are
+# handled by the bootstrap role's brew bundle reconciliation.
+
+# Stat Zen.app first so we fail loudly if the cask wasn't installed,
+# rather than letting the `defaultbrowser zen` invocation return non-
+# zero with no clear remediation.
+- name: "Workstation_tools — verify Zen.app installed"
+  ansible.builtin.stat:
+    path: "/Applications/Zen.app"
+  register: workstation_tools_zen_stat
+  tags: [workstation_tools, default_browser]
+
+- name: "Workstation_tools — fail if Zen.app missing"
+  ansible.builtin.fail:
+    msg: >-
+      /Applications/Zen.app not found — `brew bundle` should install
+      the `zen` cask. Re-run ./bootstrap.sh or `brew install --cask zen`.
+  when: not workstation_tools_zen_stat.stat.exists
+  tags: [workstation_tools, default_browser]
+
+- name: "Workstation_tools — read current default browser"
+  ansible.builtin.command:
+    cmd: "/opt/homebrew/bin/defaultbrowser"
+  register: workstation_tools_default_browser
+  changed_when: false
+  check_mode: false
+  failed_when:
+    - workstation_tools_default_browser.rc != 0
+    - "'No such file or directory' not in (workstation_tools_default_browser.stderr | default(''))"
+  tags: [workstation_tools, default_browser]
+
+# `defaultbrowser` lists installed browsers as one-per-line, prefixing
+# the current default with `* `. Pre-fix this used substring-in-stdout
+# (`'* zen' not in stdout`) — fragile because `* zen-fast` would match
+# `* zen` and falsely skip. Use stdout_lines + exact element match.
+# An explicit `failed_when` on the apply ensures a non-zero exit
+# (e.g. defaultbrowser can't HTTP-handler-bind the bundle) surfaces
+# loudly instead of being reported as a successful change.
+#
+# Note: invoking `defaultbrowser zen` triggers a one-time macOS
+# confirmation dialog ("Use Zen?") on the first run. Documented in
+# docs/runbooks/manual-steps.md.
+- name: "Workstation_tools — set Zen as default browser"
+  ansible.builtin.command:
+    cmd: "/opt/homebrew/bin/defaultbrowser zen"
+  register: workstation_tools_set_browser
+  when:
+    - workstation_tools_zen_stat.stat.exists
+    - workstation_tools_default_browser.stdout_lines is defined
+    - "'* zen' not in workstation_tools_default_browser.stdout_lines"
+  changed_when:
+    - workstation_tools_set_browser.rc is defined
+    - workstation_tools_set_browser.rc == 0
+  failed_when:
+    - workstation_tools_set_browser.rc is defined
+    - workstation_tools_set_browser.rc != 0
+  tags: [workstation_tools, default_browser]

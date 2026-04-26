@@ -1,4 +1,14 @@
 ---
+# --- LEGACY (V1, pre-Mac-Studio) --- DO NOT EDIT ---
+# Parity with the new role-shaped harness has NOT been verified.
+# Moved to legacy/ansible/ per ADR-0013 — path-correct on paper, NOT yet runtime-verified.
+# At next NUC run, verify template:/vars_files: paths + cloud-init/ refs (was ubuntu-server/).
+#
+# This file is the *target* of the legacy cron deployed by scheduler.yml.
+# That entire scheduling pattern is being retired in favour of a Mac-
+# Studio-driven, ssh-out-to-fleet model. See scheduler.yml's
+# ARCHITECTURE PIVOT block for context. NAS subsystem anyway — no
+# urgency, but do not extend this file.
 
 - name: Set up backups on NUCs
   hosts: nucs

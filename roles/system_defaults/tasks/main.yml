@@ -1,0 +1,98 @@
+---
+# roles/system_defaults/tasks/main.yml
+# Data-driven osx_defaults loop (ADR-0004). Each entry in
+# system_defaults_entries (defaults/main.yml) becomes one iteration.
+# The module reads the current plist value before writing and only
+# reports changed when it actually changed — this is how we earn the
+# "second make check = 0 changes" correctness witness (ADR-0009).
+#
+# Split into Dock-keys vs non-Dock so the play-level `Restart Dock`
+# handler only fires when an actual Dock key changed. Pre-split, the
+# single loop's `notify` fired on *any* osx_defaults change, killing
+# the user's running Dock mid-session for unrelated changes
+# (TextEdit, screensaver, keyboard prefs, etc.).
+
+- name: "Apply managed defaults — Dock keys (notifies Restart Dock)"
+  community.general.osx_defaults:
+    domain: "{{ item.domain }}"
+    key: "{{ item.key }}"
+    type: "{{ item.type }}"
+    value: "{{ item.value }}"
+    state: present
+  loop: "{{ system_defaults_entries | selectattr('domain', 'equalto', 'com.apple.dock') | list }}"
+  loop_control:
+    label: "{{ item.domain }} {{ item.key }}"
+  notify: Restart Dock
+  tags: [system_defaults]
+
+- name: "Apply managed defaults — non-Dock keys (no Dock restart)"
+  community.general.osx_defaults:
+    domain: "{{ item.domain }}"
+    key: "{{ item.key }}"
+    type: "{{ item.type }}"
+    value: "{{ item.value }}"
+    state: present
+  loop: "{{ system_defaults_entries | rejectattr('domain', 'equalto', 'com.apple.dock') | list }}"
+  loop_control:
+    label: "{{ item.domain }} {{ item.key }}"
+  tags: [system_defaults]
+
+# ---------- Power management — always-on via user LaunchAgent ----------
+# pmset is system-scope and needs sudo, which a KVM-driven Mac can't
+# satisfy via TouchID. Instead, install a user-scope LaunchAgent that
+# runs `caffeinate -d -i -s`. Its power assertions override pmset's
+# sleep schedule for as long as the process runs; KeepAlive ensures it
+# does. No sudo, no manual one-shots — the plist file in this role is
+# the source of truth.
+#
+# Idempotency: copy hashes the plist (changed only on content drift);
+# launchctl print rc==0 detects already-loaded state; bootstrap runs
+# only when not loaded; reload runs only when the plist content changed
+# AND the agent was already loaded. Second `make check` reports zero.
+
+- name: "Always-on — ensure ~/Library/LaunchAgents exists"
+  ansible.builtin.file:
+    path: "{{ ansible_env.HOME }}/Library/LaunchAgents"
+    state: directory
+    mode: "0755"
+  tags: [system_defaults, always_on]
+
+- name: "Always-on — install caffeinate LaunchAgent plist"
+  ansible.builtin.copy:
+    src: dev.homelab.always-on.plist
+    dest: "{{ ansible_env.HOME }}/Library/LaunchAgents/dev.homelab.always-on.plist"
+    mode: "0644"
+  register: system_defaults_alwayson_plist
+  tags: [system_defaults, always_on]
+
+- name: "Always-on — read launchd load state"
+  ansible.builtin.command:
+    cmd: "launchctl print gui/{{ ansible_user_uid }}/dev.homelab.always-on"
+  register: system_defaults_alwayson_state
+  changed_when: false
+  failed_when: false
+  check_mode: false
+  tags: [system_defaults, always_on]
+
+- name: "Always-on — bootstrap LaunchAgent (first install)"
+  ansible.builtin.command:
+    cmd: "launchctl bootstrap gui/{{ ansible_user_uid }} {{ ansible_env.HOME }}/Library/LaunchAgents/dev.homelab.always-on.plist"
+  when: system_defaults_alwayson_state.rc != 0
+  changed_when: true
+  tags: [system_defaults, always_on]
+
+# Reload on plist change. `bootout` fails (rc=3) if the agent isn't loaded,
+# which can happen via TOCTOU between the read-state probe above and this
+# task (user manually unloads, login session change, etc.). Use `set -uo`
+# (no -e) plus `|| true` on bootout so a benign "not loaded" result
+# doesn't abort the play; bootstrap is the canonical re-load path either way.
+- name: "Always-on — reload LaunchAgent on plist change"
+  ansible.builtin.shell: |
+    set -uo pipefail
+    launchctl bootout "gui/{{ ansible_user_uid }}/dev.homelab.always-on" 2>/dev/null || true
+    launchctl bootstrap "gui/{{ ansible_user_uid }}" "{{ ansible_env.HOME }}/Library/LaunchAgents/dev.homelab.always-on.plist"
+  when:
+    - system_defaults_alwayson_plist is changed
+    - system_defaults_alwayson_state.rc == 0
+  changed_when: true
+  tags: [system_defaults, always_on]

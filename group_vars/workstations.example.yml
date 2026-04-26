@@ -1,0 +1,22 @@
+---
+# Workstations-group config template. Copy to group_vars/workstations.yml
+# (gitignored) and adjust. Real secrets are resolved via
+# community.general.onepassword lookup — this file should NOT contain
+# any secrets.
+
+# === De-Apple layers (ADR-0003) ===
+# Each layer has a distinct blast radius. Enable incrementally.
+harden_apple_cruft_disable: true              # Layer 1: launch agents, Dock, iCloud sync toggles. Safe.
+harden_apple_cruft_delete_bundles: false      # Layer 2: rm -rf consumer /Applications/*.app. Rehearse in Tart VM first.
+harden_apple_cruft_block_telemetry: false     # Layer 3: /etc/hosts null-route of Apple analytics. Can break softwareupdate.
+
+# === Git identity ===
+git_user_name: "Zane Riley"
+git_user_email: "zaneriley@gmail.com"
+
+# === Role defaults live in roles/<role>/defaults/main.yml. ===
+# Override here only when you need host-specific tweaks, e.g.:
+# bootstrap_foundation_dirs:
+#   - "{{ ansible_env.HOME }}/lab"
+#   - "{{ ansible_env.HOME }}/repos"
+#   ...

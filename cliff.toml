@@ -1,0 +1,66 @@
+# git-cliff configuration — generates CHANGELOG.md from Conventional Commits.
+# See ADR-0012. Do not adopt LLM-generated changelogs; determinism is load-bearing.
+#
+# Commit-scope parsers below mirror the 5 lifecycle roles from ADR-0008 plus
+# scopes for ADRs, docs, and the harness skeleton itself. Adding a new role?
+# Add a parser here with the next ordering prefix.
+#
+# Docs: https://git-cliff.org/docs/configuration
+
+[changelog]
+header = """
+# Changelog
+
+All notable changes to this repository are recorded here.
+
+This file is **generated** from Conventional Commits by `git-cliff` — see
+[ADR-0012](ADRS.md). Do not hand-edit; edits are overwritten on the next
+`make changelog` run, and CI (`make changelog-check`) fails on drift.
+
+Format follows [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.1.0/).
+Commit convention: [Conventional Commits 1.0.0](https://www.conventionalcommits.org/en/v1.0.0/).
+
+"""
+
+body = """
+{% if version -%}
+## [{{ version | trim_start_matches(pat="v") }}] — {{ timestamp | date(format="%Y-%m-%d") }}
+{% else -%}
+## [Unreleased]
+{% endif %}
+{% for group, commits in commits | group_by(attribute="group") %}
+### {{ group | split(pat="-->") | last | trim }}
+{% for commit in commits -%}
+- {{ commit.message | split(pat="\n") | first | upper_first }}{% if commit.breaking %} **[BREAKING]**{% endif %} ([`{{ commit.id | truncate(length=7, end="") }}`](https://github.com/zaneriley/automated-homelab-deployment/commit/{{ commit.id }}))
+{% endfor %}
+{% endfor %}
+"""
+
+footer = ""
+trim = true
+
+[git]
+conventional_commits = true
+filter_unconventional = true
+split_commits = false
+protect_breaking_commits = true
+filter_commits = false
+tag_pattern = "v[0-9].*"
+topo_order = false
+sort_commits = "oldest"
+
+# Order of parsers matters — first match wins. Role-scoped commits must
+# precede the bare `feat|fix` catch-all so they route to role sections.
+commit_parsers = [
+  { message = "^.*!:", group = "<!--0-->Breaking Changes" },
+  { body = ".*BREAKING CHANGE", group = "<!--0-->Breaking Changes" },
+  { message = "^(feat|fix|perf|refactor)\\(bootstrap\\)", group = "<!--1-->Bootstrap" },
+  { message = "^(feat|fix|perf|refactor)\\(system_defaults\\)", group = "<!--2-->System defaults" },
+  { message = "^(feat|fix|perf|refactor)\\(shell_env\\)", group = "<!--3-->Shell env" },
+  { message = "^(feat|fix|perf|refactor)\\(harden\\)", group = "<!--4-->Harden" },
+  { message = "^(feat|fix|perf|refactor)\\((workstation_tools|workstation)\\)", group = "<!--5-->Workstation tools" },
+  { message = "^(feat|fix|perf|refactor)", group = "<!--6-->Harness" },
+  { message = "^docs\\(adr\\)", group = "<!--7-->Decisions (ADRs)" },
+  { message = "^docs", group = "<!--8-->Documentation" },
+  { message = "^(chore|style|test|ci|build)", skip = true },
+]

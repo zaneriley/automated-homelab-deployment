@@ -1,0 +1,17 @@
+{
+  "agent_servers": {
+    "codex-acp": {
+      "type": "registry"
+    },
+    "claude-acp": {
+      "type": "registry"
+    }
+  },
+  "base_keymap": "JetBrains",
+  "//": "Zed settings. Symlinked from shell_env role. Edits to this file are live.",
+  "theme": "Gruvbox Dark",
+  "buffer_font_family": "JetBrainsMono Nerd Font Mono",
+  "buffer_font_size": 14,
+  "ui_font_family": "JetBrainsMono Nerd Font Mono",
+  "ui_font_size": 14
+}

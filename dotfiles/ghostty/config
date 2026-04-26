@@ -1,0 +1,9 @@
+# Ghostty config
+# Symlinked here from the shell_env role. Edits to this file are live
+# in the repo — next `make apply` is a no-op unless the symlink itself
+# was removed.
+
+font-family = JetBrainsMono Nerd Font Mono
+font-size = 14
+
+theme = Melange Dark

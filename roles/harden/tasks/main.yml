@@ -1,0 +1,80 @@
+---
+# roles/harden/tasks/main.yml
+# Three-layer de-Apple work (ADR-0003). Each layer is gated by a variable
+# from defaults/main.yml. Layers 2 and 3 default OFF.
+
+# ---------- Layer 1: Disable ----------
+
+- name: "Harden/L1 — empty Dock persistent-apps + persistent-others"
+  community.general.osx_defaults:
+    domain: com.apple.dock
+    key: "{{ item }}"
+    type: array
+    value: []
+    state: present
+  loop:
+    - persistent-apps
+    - persistent-others
+  when: harden_apple_cruft_disable | bool
+  notify: Restart Dock
+  tags: [harden, apple_cruft, harden_apple_cruft_disable]
+
+# Siri and Apple Intelligence launch-agent disables (user scope).
+# Pattern: read current disabled-list, then conditionally disable each
+# label that isn't already on the list. This gives honest idempotency —
+# the disable command only runs when there's actual state to change.
+
+- name: "Harden/L1 — read current launchctl disabled-services (user scope)"
+  ansible.builtin.command:
+    cmd: "launchctl print-disabled gui/{{ ansible_user_uid }}"
+  register: harden_launchctl_disabled
+  changed_when: false
+  check_mode: false
+  when: harden_apple_cruft_disable | bool
+  tags: [harden, apple_cruft, harden_apple_cruft_disable, launchctl]
+
+# Parse the print-disabled output once into a list of already-disabled
+# labels via regex_findall. Pre-fix this was a substring search of the
+# raw multi-line stdout (`'"X" => disabled' not in stdout`); a single
+# whitespace change in Apple's output format would silently break the
+# match, causing the disable command to re-run for every label and
+# falsifying the ADR-0009 second-`make check`-zero witness.
+- name: "Harden/L1 — extract already-disabled labels"
+  ansible.builtin.set_fact:
+    harden_launchctl_already_disabled: >-
+      {{ harden_launchctl_disabled.stdout
+         | default('')
+         | regex_findall('"([^"]+)"\s*=>\s*disabled') }}
+  when: harden_apple_cruft_disable | bool
+  tags: [harden, apple_cruft, harden_apple_cruft_disable, launchctl]
+
+- name: "Harden/L1 — disable Siri + Apple Intelligence user launch agents"
+  ansible.builtin.command:
+    cmd: "launchctl disable gui/{{ ansible_user_uid }}/{{ item }}"
+  loop: "{{ harden_launchctl_disable_labels }}"
+  when:
+    - harden_apple_cruft_disable | bool
+    - item not in harden_launchctl_already_disabled
+  changed_when: true
+  tags: [harden, apple_cruft, harden_apple_cruft_disable, launchctl]
+
+# ---------- Layer 2: Delete bundles ----------
+# Default OFF. Rehearse in Tart VM before flipping (ADR-0003).
+# Targets are user-removable consumer apps that Apple ships under
+# /Applications/ — never /System/Applications/ (ADR-0005).
+# state=absent is honestly idempotent: removes the bundle if present,
+# reports unchanged if already gone. No `command: rm -rf` (ADR-0004
+# spirit — prefer the native module).
+
+- name: "Harden/L2 — delete user-removable consumer Apple app bundles"
+  ansible.builtin.file:
+    path: "/Applications/{{ item }}"
+    state: absent
+  loop: "{{ harden_apple_cruft_bundles }}"
+  when: harden_apple_cruft_delete_bundles | bool
+  become: true
+  tags: [harden, apple_cruft, harden_apple_cruft_delete_bundles]
+
+# ---------- Layer 3: Block telemetry ----------
+# Default OFF. Can break softwareupdate. Adds land in follow-up commits
+# and are gated by harden_apple_cruft_block_telemetry.

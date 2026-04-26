@@ -1,0 +1,31 @@
+---
+# roles/shell_env/tasks/main.yml
+# Ensures the editor / terminal configs under ~/.config/ are symlinks
+# to the canonical dotfiles at <repo>/dotfiles/. Symlink pattern (not
+# templating) so edits to the config files land in git directly — no
+# render-then-apply loop, no drift between "what's on disk" and "what's
+# in the repo."
+#
+# Data-driven via `shell_env_dotfiles` in defaults/main.yml — adding a
+# new tool is one list entry, no new task block.
+
+- name: "Shell_env — ensure ~/.config/<tool>/ exists"
+  ansible.builtin.file:
+    path: "{{ ansible_env.HOME }}/.config/{{ item.tool }}"
+    state: directory
+    mode: "0755"
+  loop: "{{ shell_env_dotfiles }}"
+  loop_control:
+    label: "{{ item.tool }}"
+  tags: [shell_env]
+
+- name: "Shell_env — symlink ~/.config/<tool>/<file> to repo dotfile"
+  ansible.builtin.file:
+    src: "{{ playbook_dir }}/dotfiles/{{ item.tool }}/{{ item.file }}"
+    dest: "{{ ansible_env.HOME }}/.config/{{ item.tool }}/{{ item.file }}"
+    state: link
+    force: true   # overwrite a pre-existing regular file (fresh install has none)
+  loop: "{{ shell_env_dotfiles }}"
+  loop_control:
+    label: "{{ item.tool }}/{{ item.file }}"
+  tags: [shell_env]

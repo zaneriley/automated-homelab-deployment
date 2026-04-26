@@ -1,0 +1,9 @@
+---
+# Galaxy collections required by the master-node roles.
+# Install with: ansible-galaxy collection install -r requirements.yml
+# bootstrap.sh runs this automatically.
+collections:
+  - name: community.general
+    version: ">=9.0.0"
+  - name: ansible.posix
+    version: ">=1.5.0"

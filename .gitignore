@@ -1,65 +1,77 @@
-# Compiled python files
+# Python
 *.pyc
-*__pycache__
+__pycache__/
 
-# Retry files created by Ansible
+# Ansible runtime
 *.retry
 
-# SSH Keys and Inventory files that may contain credentials
+# Legacy inventory patterns (for ansible/setup_nuc.yml; master-node inventory is tracked)
 **/inventory/production
 **/inventory/staging
 **/inventory/*.vault
-inventory
 *.pem
 *.key
 *.tfvars
 cloudflare/*.txt
 
-ansible.cfg
+# SSH private keys (belt-and-suspenders — 1Password agent serves our keys, so
+# these files shouldn't exist on this machine, but if a tool ever drops them
+# don't let git silently pick them up)
+id_rsa*
+id_ed25519*
+id_ecdsa*
+id_dsa*
+*.pub
+*.pfx
+*.p12
+*.keystore
 
-# Vault password file
+# Vault password file (legacy — phase-2 migrates secrets to 1Password per ADR-0007)
 .vault_pass.txt
-
-# Auto-generated host keys
 host_key_checking
 
-# Folder for Roles downloaded by ansible-galaxy command
-roles/
+# Group/host vars — tracked *.example.yml templates, gitignored real values
+# (ADR-0007). Symmetric between group_vars and host_vars so new groups/hosts
+# are protected by default without needing a .gitignore edit per group.
+# Exception: group_vars/all.yml is tracked — it carries cross-group, non-secret
+# defaults; secrets never go here (resolve via community.general.onepassword).
+group_vars/*.yml
+!group_vars/*.example.yml
+!group_vars/all.yml
+host_vars/*.yml
+!host_vars/*.example.yml
 
-# Terraform files
-# Local Terraform directories
+# Research / scratch artifacts (literature reviews, planning docs)
+.tmp/
+
+# Per-machine agent tooling (Claude Code state, conversation transcripts, etc.)
+.claude/
+
+# Terraform
 .terraform/
-
-# Terraform state files
 *.tfstate
 *.tfstate.*
-
-# Override files
 override.tf
 override.tf.json
 *_override.tf
 *_override.tf.json
-
-# CLI configuration files
 .terraformrc
 terraform.rc
-
-# Generated files
 *.tfplan
 *.tfvars.json
 
-# Files and directories to ignore in an adjacent technologies project
+# macOS / editor cruft
+.DS_Store
 *.swp
 *~
 *.bak
-*.tmp
 *.log
 *.tar.gz
 *.zip
-.DS_Store
 .vagrant/
+
+# Secrets / credentials (catch-all — prefer 1Password references over any local file)
 .secret/
 secrets.yml
 *secrets*
 credentials
-*nodemon.json

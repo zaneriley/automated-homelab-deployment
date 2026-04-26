@@ -1,0 +1,42 @@
+---
+# --- LEGACY (V1, pre-Mac-Studio) --- DO NOT EDIT ---
+# Parity with the new role-shaped harness has NOT been verified.
+# Moved to legacy/ansible/ per ADR-0013 — path-correct on paper, NOT yet runtime-verified.
+# At next NUC run, verify template:/vars_files: paths + cloud-init/ refs (was ubuntu-server/).
+#
+# ─── ARCHITECTURE PIVOT (2026-04-25) ─────────────────────────────────
+# This pattern — "deploy a cron *on each host* that runs a local
+# ansible-playbook" — is being retired. The master node will drive
+# the backup cron centrally and SSH out to fleet hosts.
+# Reasons:
+#   1. Centralising on the master node is consistent with ADR-0001
+#      ("one harness for the whole fleet") — the scheduler runs from
+#      one place that knows which fleet hosts are reachable, instead
+#      of each host scheduling its own.
+#   3. The current pattern hardcodes /srv/nucs/<path> on the NUC
+#      (see PATH WARNING below); centralising avoids that on-host
+#      path coupling entirely.
+# Until the rethink lands and the NAS is repaired, do NOT redeploy
+# this play. Cron jobs already installed on existing NUCs will fail
+# silently (NAS down) — acceptable until the new design ships.
+# Tracked: AGENTS.md § 4 (Later — backup architecture rethink).
+- name: Configure Backup Cron Job
+  hosts: localhost
+  become: yes
+  tasks:
+    - name: Schedule Ansible backup playbook
+      cron:
+        name: "Backup Job"
+        minute: "0"
+        hour: "19"
+        # This needs to be absolute paths, as the chron job won't be running from the same location as your playbooks (most likely)
+        # ─── PATH WARNING (ADR-0013) ────────────────────────────────────────
+        # The repo paths moved from `ansible/` → `legacy/ansible/` in commit
+        # cycle 2026-04-25. The /srv/nucs/ paths below assume the NUC pulls
+        # this repo to `/srv/nucs/<repo>/...` — if the NUC has been re-pulled
+        # post-move, these paths are now stale and need to become
+        # `/srv/nucs/<repo>/legacy/ansible/...`. Z's NUCs are intentionally
+        # NOT being re-pulled right now (working as intended); fix this when
+        # they do.
+        job: "/usr/bin/ansible-playbook -i /srv/nucs/ansible/inventory /srv/nucs/ansible/backup.yml --vault-password-file /srv/nuc-pwd >> /var/log/backup-playbook.log 2>&1"
+        state: present
