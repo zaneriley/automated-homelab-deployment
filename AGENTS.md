@@ -127,8 +127,8 @@ Order matters. Do them in order. Cross off as done.
 (Commit hashes deliberately omitted — they rot on rebase. `CHANGELOG.md` is the authoritative timeline; cross-reference there if you need the specific commits.)
 
 **Next**
-- [ ] Obsidian vault → Linear-esque local backlog (frontmatter schema, Dataview dashboards)
-- [ ] Migrate `legacy/ansible/setup_nuc.yml` secrets from Ansible Vault → `onepassword` lookup
+- [x] Obsidian vault → Linear-esque local backlog (frontmatter schema, Dataview dashboards). Convention: `~/repos/obsidian-notes/Backlog/README.md`. Active DAG: `Backlog/active-dag.md`.
+- [ ] Migrate `legacy/ansible/setup_nuc.yml` secrets from Ansible Vault → `onepassword` lookup. Vault detail: [`harness-vault-to-1password`](../../obsidian-notes/Backlog/automated-homelab-deployment/harness-vault-to-1password.md).
 
 **Later**
 - [ ] **Rethink backup architecture.** Replace the legacy per-host cron (`legacy/ansible/scheduler.yml`) with master-driven orchestration: cron lives on the master node and SSHes out to fleet hosts. Gated by NAS subsystem work-in-progress. Out of scope this round: cloud backups — separate decision. Operational specifics (current state of each subsystem, which hosts hold which datasets) live in memory, not here.
