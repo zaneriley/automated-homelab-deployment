@@ -1,0 +1,16 @@
+---
+# Dependabot — explicitly empty.
+#
+# The repo has no actively-maintained dependency manifests at the level
+# Dependabot checks. The Nextra docs site (formerly docs/site/, now
+# legacy/docs-site/) was retired per ADR-0014; its package.json is
+# preserved as forensic reference, not maintained. Dependabot's default
+# auto-detection would otherwise re-open stale npm-bump PRs against
+# legacy/docs-site/package.json indefinitely.
+#
+# To re-enable for a future supported manifest, add an entry here under
+# `updates:` (do NOT delete this file; the empty list is the explicit
+# off switch).
+
+version: 2
+updates: []
