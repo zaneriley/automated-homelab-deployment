@@ -17,6 +17,25 @@ Format:
 
 ---
 
+## ADR-0014: Retire the Nextra docs site to `legacy/docs-site/`
+**Date:** 2026-04-26
+**Status:** Accepted
+**Decision:** Move `docs/site/` → `legacy/docs-site/`. The Nextra documentation site documents the pre-Mac-Studio fleet topology (NUC `setup_nuc.yml`, Cloudflare DNS, cloud-init), is `noindex, nofollow` by design, and has not had a successful Vercel deploy since 2024-12-15. It does not describe the current Mac-Studio-master-node harness. Same legacy-treatment pattern as `legacy/ansible/`. Closes the open question raised in ADR-0013 § "Open question".
+
+**Alternatives:**
+- **Delete entirely.** Rejected — preserves zero forensic reference for the V1 fleet topology, which Z's NUCs still run today.
+- **Keep at `docs/site/` and fix the deploy.** Rejected — the site documents a topology this repo no longer drives; maintaining it would mean writing fresh content for the master-node harness, which doesn't earn its keep when AGENTS.md / ADRS.md / `docs/runbooks/` already serve the orientation triad.
+- **Add a new ADR for it.** Z's pacing: small focused decisions land as their own ADR rather than amending ADR-0013. (This ADR.)
+
+**Rationale:** The same capability-vs-surface logic from `feedback_capability_over_surface.md`: the durable capability is "operator orientation to the harness." The published Nextra surface was 1-3 year lifespan and didn't survive a topology change. AGENTS.md (contract) + ADRS.md (decisions) + `docs/runbooks/` (procedures) carry the durable capability today; the Nextra surface was redundant. Moving rather than deleting matches the `legacy/ansible/` precedent — kept on disk for forensic reference, not built or deployed. Off-repo follow-ups (operator action, not codified): disconnect the Vercel project on vercel.com so the failing-deploy red badges stop; clear the GitHub repo's `homepageUrl` field.
+
+**Consequences:**
+- Future Dependabot bumps for the Nextra site live under `legacy/docs-site/`. Add `.github/dependabot.yml` with `updates: []` so they stop firing entirely (this PR).
+- AGENTS.md §3 row for `docs/site/` removed; `legacy/docs-site/` added.
+- AGENTS.md §3 "Open question" about Nextra publishing is closed.
+- `next.config.js` carries an in-file freeze annotation, matching the legacy/ansible/ in-file annotation pattern.
+- Vercel-side and GitHub `homepageUrl` cleanup are operator actions, not codified.
+
 ## ADR-0013: Repo information architecture — function-named roles + facts-based OS dispatch + tool/vendor partition
 **Date:** 2026-04-25
 **Status:** Accepted

@@ -80,8 +80,8 @@ Every tracked top-level entry, with a one-line purpose. Local conventions live n
 | `terraform/<vendor>/` | Per-vendor declarative state — `cloudflare/` today, `tailscale/` next |
 | `cloud-init/` | Linux-fleet provisioning seed; cloud-init `user-data` + `meta-data` |
 | `docs/runbooks/` | Human procedures (canonical) — `manual-steps.md`, future how-tos |
-| `docs/site/` | Nextra documentation site (publishes from `runbooks/`, doesn't duplicate) |
 | `legacy/ansible/` | Frozen pre-Mac-Studio NUC playbooks; parity not yet runtime-verified |
+| `legacy/docs-site/` | Frozen Nextra docs site (pre-Mac-Studio fleet topology); retired per ADR-0014 |
 
 **Files**
 
@@ -106,9 +106,6 @@ Every tracked top-level entry, with a one-line purpose. Local conventions live n
 **Why this shape:** function-named roles + facts-based OS dispatch is the dominant pattern in heterogeneous-fleet IaC repos. See **ADR-0013** for the convergence trace (5 IA proposals → multi-OS `/literature` brief → 5 peer reviews).
 
 **OS dispatch — target vs current.** ADR-0013 ratified the `tasks/main.yml` → `tasks/{{ ansible_os_family }}.yml` indirection as the eventual shape. Today every role's `tasks/main.yml` contains the macOS work directly — `workstations` has one Mac host, the indirection earns nothing yet. Split when a second OS family lands in `workstations`, or when a role's macOS body grows large enough that the indirection pays for itself.
-
-**Open question** (not gating any further IA move):
-- Is the Nextra site still being published anywhere (CI / Vercel / Pages)? If no → retire to `legacy/docs-site/`; if yes → leave at `docs/site/`. Tracked in ADR-0013.
 
 **Runtime verification** (deferred, intentional):
 The legacy NUC playbooks at `legacy/ansible/` are path-correct on paper but not runtime-verified — Z's NUCs and Pis are working as-is and we're not re-running the legacy plays right now. The "what to verify when next run" notes live in file headers inside `legacy/ansible/`.
