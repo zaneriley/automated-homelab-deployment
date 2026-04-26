@@ -29,6 +29,7 @@ cask "zen"
 cask "1password"
 cask "1password-cli"
 cask "nikitabobko/tap/aerospace"
+cask "obsidian"   # vault tracked at ~/repos/obsidian-notes (see workstation_tools role + manual-steps.md)
 
 # === Fonts ===
 cask "font-jetbrains-mono-nerd-font"

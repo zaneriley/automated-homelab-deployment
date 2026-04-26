@@ -139,3 +139,21 @@ Two realistic options:
 2. **Remove via Recovery + SIP off** (manual, expressly opt-in). Boot into Recovery → Terminal → `csrutil disable` → reboot → `sudo rm -rf /System/Applications/Chess.app` (or others) → reboot to Recovery → `csrutil enable` → reboot. Apple may restore removed system apps on the next macOS update; expect to redo. The harness does not script any of this; if you want it, it is a one-time-per-install human procedure.
 
 The `harden` role already addresses the *behavioral* side — supporting daemons (`com.apple.gamed`, `com.apple.photoanalysisd`, `com.apple.calaccessd`, etc.) are launchctl-disabled at user scope, so the apps' background work stops at next login even if the bundles stay on disk.
+
+---
+
+## Obsidian — clone the vault
+
+`Brewfile` installs `Obsidian.app`. The vault content (notes + `.obsidian/` config + plugin binaries) lives in a separate private repo at `git@github.com:zaneriley/obsidian-notes` and is its own source of truth — the harness only ensures the app is installed and that the vault is cloned at the canonical path.
+
+One-shot, on a fresh Mac (after `bootstrap.sh` finishes Brewfile reconciliation, with the 1Password SSH agent unlocked):
+
+```
+git clone git@github.com:zaneriley/obsidian-notes.git ~/repos/obsidian-notes
+```
+
+Then open Obsidian → "Open another vault" → select `~/repos/obsidian-notes`. The tracked `.obsidian/` brings the configured plugins (`obsidian-git`, `dataview`, `obsidian-tasks-plugin`, `table-editor-obsidian`, `smart-connections`), hotkeys, theme, and folder-exclusion rules with it. `obsidian-git` auto-commits every 120s — that's the audit trail and sync mechanism.
+
+Why manual rather than scripted: cloning a private repo needs the 1Password SSH agent unlocked, which on a KVM-driven Mac Studio can't ride biometric. Authenticating once at first-install is cleaner than codifying a sudo-adjacent dance into the role. The `workstation_tools` role's preflight fails loudly with this exact remediation if the vault directory is missing at apply time.
+
+The vault's own contract — corpus boundaries (`Journal/Writing` are LLM-blind, `Backlog/` is operational, `Projects/` is shared) — lives in `~/repos/obsidian-notes/AGENTS.md`.

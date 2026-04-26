@@ -62,3 +62,29 @@
     - workstation_tools_set_browser.rc is defined
     - workstation_tools_set_browser.rc != 0
   tags: [workstation_tools, default_browser]
+
+# ---------- Obsidian — vault preflight ----------
+# Obsidian.app is installed by the brew bundle (Brewfile cask "obsidian").
+# The vault at workstation_tools_obsidian_vault_path is a private git repo that tracks its
+# own .obsidian/ config + plugin binaries — the harness owns "app installed"
+# and "vault present at canonical path", nothing else.
+#
+# Cloning the vault requires the 1Password SSH agent (KVM-driven Macs
+# can't TouchID), so we surface the missing-vault state as a runbook
+# step rather than try to clone declaratively. See
+# docs/runbooks/manual-steps.md for the one-shot.
+
+- name: "Workstation_tools — verify Obsidian vault is cloned"
+  ansible.builtin.stat:
+    path: "{{ workstation_tools_obsidian_vault_path }}"
+  register: workstation_tools_obsidian_vault
+  tags: [workstation_tools, obsidian]
+
+- name: "Workstation_tools — fail if Obsidian vault missing"
+  ansible.builtin.fail:
+    msg: >-
+      Obsidian vault not found at {{ workstation_tools_obsidian_vault_path }}.
+      Clone it first (one-shot; see docs/runbooks/manual-steps.md):
+        git clone git@github.com:zaneriley/obsidian-notes.git {{ workstation_tools_obsidian_vault_path }}
+  when: not workstation_tools_obsidian_vault.stat.exists
+  tags: [workstation_tools, obsidian]

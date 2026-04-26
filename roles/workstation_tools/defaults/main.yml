@@ -1,0 +1,15 @@
+---
+# workstation_tools role defaults.
+# Override via group_vars/workstations.yml or host_vars/<host>.yml.
+#
+# Lives in `defaults/` (not `vars/`) so group/host overrides win as
+# documented; `vars/` precedence sits above `group_vars/` and would
+# silently shadow the override.
+
+# Path where the obsidian-notes vault is expected to live. The vault is
+# its own git repo (private; remote at git@github.com:zaneriley/obsidian-notes)
+# and tracks its own .obsidian/ config + plugin binaries — the harness
+# only ensures the app is installed and the clone is at the canonical
+# location. Cloning the vault is a one-shot manual step, documented in
+# docs/runbooks/manual-steps.md.
+workstation_tools_obsidian_vault_path: "{{ ansible_env.HOME }}/repos/obsidian-notes"
