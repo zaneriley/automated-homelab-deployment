@@ -13,3 +13,13 @@
 # location. Cloning the vault is a one-shot manual step, documented in
 # docs/runbooks/manual-steps.md.
 workstation_tools_obsidian_vault_path: "{{ ansible_env.HOME }}/repos/obsidian-notes"
+
+# pai (Personal AI) — global agent contract + skills + long-term memory.
+# Cloned over HTTPS so the gh CLI's keychain-backed token (configured by
+# `gh auth setup-git`; see docs/runbooks/manual-steps.md) handles auth
+# non-interactively, without per-machine SSH key sprawl. Other agentic
+# tools read the .agents/ directory directly; Claude Code reads via
+# the symlinks below.
+workstation_tools_pai_repo_url: "https://github.com/zaneriley/pai.git"
+workstation_tools_pai_clone_path: "{{ ansible_env.HOME }}/.agents"
+workstation_tools_claude_dir: "{{ ansible_env.HOME }}/.claude"
