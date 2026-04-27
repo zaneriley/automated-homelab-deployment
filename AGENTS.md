@@ -79,7 +79,7 @@ Every tracked top-level entry, with a one-line purpose. Local conventions live n
 | `dotfiles/` | Ansible role payload (NOT chezmoi/stow); symlinked into `~/.config/<tool>/` by `shell_env` |
 | `scripts/` | Operator helpers (Tart rehearsal today); prefer role-internal for new ones; junk-drawer cliff at ~3 distinct domains |
 | `terraform/<vendor>/` | Per-vendor declarative state — `cloudflare/` today, `tailscale/` next |
-| `cloud-init/` | Linux-fleet provisioning seed; cloud-init `user-data` + `meta-data` |
+| ~~`cloud-init/`~~ | Removed 2026-04-27. Held a never-working Subiquity autoinstall config (stalled at disk-format step) plus PII (hashed password, embedded SSH keys). Forward path: cloud-image cloud-init via netboot.xyz/PXE — design captured in vault note `Backlog/automated-homelab-deployment/fleet-automated-provisioning.md`; tracks the existing §4 Later "PXE / netboot.xyz fleet provisioning" item. |
 | `docs/runbooks/` | Human procedures (canonical) — `manual-steps.md`, future how-tos |
 | `legacy/ansible/` | Frozen pre-Mac-Studio NUC playbooks; parity not yet runtime-verified |
 | `legacy/docs-site/` | Frozen Nextra docs site (pre-Mac-Studio fleet topology); retired per ADR-0014 |
