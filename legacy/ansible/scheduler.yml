@@ -38,5 +38,13 @@
         # `/srv/nucs/<repo>/legacy/ansible/...`. Z's NUCs are intentionally
         # NOT being re-pulled right now (working as intended); fix this when
         # they do.
+        # ─── SECRETS WARNING (ADR-0007, 2026-04-27) ─────────────────────────
+        # `--vault-password-file /srv/nuc-pwd` and the file at that path are
+        # obsolete after the vault.yml → 1Password migration. backup.yml no
+        # longer reads vault.yml; it now resolves secrets via
+        # community.general.onepassword. The 1P CLI is master-driven only
+        # (Mac Studio), so this NUC-local cron pattern cannot work as-is —
+        # it is retired pending the master-driven scheduler rethink (see
+        # ARCHITECTURE PIVOT block above; AGENTS.md § 4 Later).
         job: "/usr/bin/ansible-playbook -i /srv/nucs/ansible/inventory /srv/nucs/ansible/backup.yml --vault-password-file /srv/nuc-pwd >> /var/log/backup-playbook.log 2>&1"
         state: present

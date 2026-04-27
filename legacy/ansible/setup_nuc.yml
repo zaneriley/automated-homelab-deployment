@@ -12,8 +12,9 @@
 #   2. Cut a `legacy-baseline-vN` git tag.
 #   3. Capture a `--check --diff` baseline against a representative NUC.
 #   4. Refactor by slice; re-run; diff resulting state against baseline.
-#   5. Migrate vault.yml secrets to community.general.onepassword
-#      lookups (ADR-0007).
+#   5. (Done 2026-04-27.) vault.yml secrets migrated to
+#      community.general.onepassword lookups per ADR-0007. The archived
+#      vault.yml.archive remains for git archaeology only.
 #   6. Delete the relevant files from legacy/ansible/ only when zero
 #      rows in the inventory remain `kept`.
 # Until that day, this file is steady-state authority for the NUCs.
@@ -37,10 +38,6 @@
       - needrestart
 
   tasks:
-    - name: Include Vault variables
-      include_vars:
-        file: vault.yml
-
     - name: Update the cache and install necessary packages
       apt:
         name: "{{ packages }}"
@@ -117,6 +114,31 @@
   vars:
     cloudflared_config_dir: "/etc/cloudflared"
     cloudflared_template_dir: "{{ playbook_dir}}/templates"
+    # Secrets resolved once per play via 1Password lookup (ADR-0007).
+    # Replaces vault.yml include; biometric auth happens at task-eval time.
+    cloudflare_account_id: "{{ lookup('community.general.onepassword', 'Homelab Cloudflare API', field='account_id', vault='Private') }}"
+    cloudflare_api_token: "{{ lookup('community.general.onepassword', 'Homelab Cloudflare API', field='credential', vault='Private') }}"
+    # Tunnel routing topology — not a secret, was historically co-located
+    # in vault.yml. Inlined here so the play has no vault dependency.
+    cloudflared_domains:
+      domain0:
+        domain: "*.homelab.family"
+        port: 80
+      domain1:
+        domain: "kabuki.homelab.family"
+        port: "32400"
+      domain2:
+        domain: "speedtest.homelab.family"
+        port: "8085"
+      domain3:
+        domain: "request.homelab.family"
+        port: "5055"
+      domain4:
+        domain: "library.homelab.family"
+        port: "8083"
+      domain5:
+        domain: "docs.homelab.family"
+        port: "8000"
   tasks:
 
     # https://github.com/quic-go/quic-go/wiki/UDP-Buffer-Sizes
@@ -308,6 +330,9 @@
 - name: Check if reboot needed
   hosts: nucs
   become: yes
+  vars:
+    # Secret resolved once per play via 1Password lookup (ADR-0007).
+    discord_webhook: "{{ lookup('community.general.onepassword', 'Homelab Discord Backup Webhook', field='credential', vault='Private') }}"
   tasks:
     - name: Check if a reboot is required for sysctl settings to apply
       command: needrestart -b
