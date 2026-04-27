@@ -3,7 +3,7 @@ SHELL := /bin/bash
 
 PLAYBOOK := site.yml
 
-.PHONY: help lint syntax check apply smoke rehearse rehearse-base changelog changelog-check release
+.PHONY: help lint syntax check apply smoke rehearse rehearse-workstation rehearse-base changelog changelog-check release
 
 help: ## Show this help
 	@awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make \033[36m<target>\033[0m\n\nTargets:\n"} /^[a-zA-Z_-]+:.*?##/ { printf "  \033[36m%-10s\033[0m %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
@@ -30,6 +30,11 @@ rehearse: ## Rehearse a destructive layer in a Tart VM (LAYER=layer2|layer3, def
 	@command -v /opt/homebrew/bin/tart >/dev/null || { echo "tart not installed — brew bundle"; exit 1; }
 	@/opt/homebrew/bin/tart list 2>/dev/null | awk 'NR>1 {print $$2}' | grep -qx tahoe-clt-base || { echo "tahoe-clt-base image missing — run 'make rehearse-base' (one-time, ~10 min)"; exit 1; }
 	scripts/rehearse-tart.sh $(or $(LAYER),layer2)
+
+rehearse-workstation: ## Rehearse workstation_tools agent_surface tag in a Tart VM
+	@command -v /opt/homebrew/bin/tart >/dev/null || { echo "tart not installed — brew bundle"; exit 1; }
+	@/opt/homebrew/bin/tart list 2>/dev/null | awk 'NR>1 {print $$2}' | grep -qx tahoe-clt-base || { echo "tahoe-clt-base image missing — run 'make rehearse-base' (one-time, ~10 min)"; exit 1; }
+	scripts/rehearse-workstation.sh
 
 rehearse-base: ## One-time setup: pull vanilla Tart image, bake CLT into tahoe-clt-base
 	@command -v /opt/homebrew/bin/tart >/dev/null || { echo "tart not installed — brew bundle"; exit 1; }

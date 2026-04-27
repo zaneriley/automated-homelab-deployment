@@ -88,3 +88,58 @@
         git clone git@github.com:zaneriley/obsidian-notes.git {{ workstation_tools_obsidian_vault_path }}
   when: not workstation_tools_obsidian_vault.stat.exists
   tags: [workstation_tools, obsidian]
+
+# ---------- Agent surface — pai clone + Claude symlinks ----------
+# Clone pai (Personal AI) and link Claude Code's expected paths into
+# it. Claude Code reads ~/.claude/CLAUDE.md and ~/.claude/skills via
+# the symlinks; other agentic tools read the .agents/ checkout direct.
+#
+# The HTTPS clone uses git's credential helper (configured once via
+# `gh auth setup-git`; documented in docs/runbooks/manual-steps.md).
+# If the helper isn't set up, the clone task hangs on a username
+# prompt — the runbook step is the prereq.
+
+# Stat first, then clone-if-missing. Mirrors the Zen + Obsidian
+# preflight idiom in this role and sidesteps ansible.builtin.git's
+# ambiguous URL-mismatch behavior on hosts where ~/.agents already
+# exists with a non-HTTPS remote (e.g. the current master node uses
+# git@github.com:zaneriley/pai). update: false keeps the task strictly
+# "ensure cloned" — pulling latest pai is a separate concern (manual
+# `git pull` or a future launchd timer).
+- name: "Workstation_tools — stat pai clone"
+  ansible.builtin.stat:
+    path: "{{ workstation_tools_pai_clone_path }}/.git"
+  register: workstation_tools_pai_clone_stat
+  tags: [workstation_tools, agent_surface]
+
+- name: "Workstation_tools — clone pai repo if missing"
+  ansible.builtin.git:
+    repo: "{{ workstation_tools_pai_repo_url }}"
+    dest: "{{ workstation_tools_pai_clone_path }}"
+    version: main
+    update: false
+  when: not workstation_tools_pai_clone_stat.stat.exists
+  tags: [workstation_tools, agent_surface]
+
+- name: "Workstation_tools — ensure ~/.claude directory exists"
+  ansible.builtin.file:
+    path: "{{ workstation_tools_claude_dir }}"
+    state: directory
+    mode: "0755"
+  tags: [workstation_tools, agent_surface]
+
+- name: "Workstation_tools — symlink ~/.claude/CLAUDE.md → pai AGENTS.md"
+  ansible.builtin.file:
+    src: "{{ workstation_tools_pai_clone_path }}/AGENTS.md"
+    dest: "{{ workstation_tools_claude_dir }}/CLAUDE.md"
+    state: link
+    force: true
+  tags: [workstation_tools, agent_surface]
+
+- name: "Workstation_tools — symlink ~/.claude/skills → pai skills"
+  ansible.builtin.file:
+    src: "{{ workstation_tools_pai_clone_path }}/skills"
+    dest: "{{ workstation_tools_claude_dir }}/skills"
+    state: link
+    force: true
+  tags: [workstation_tools, agent_surface]
