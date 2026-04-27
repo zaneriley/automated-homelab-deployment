@@ -1,0 +1,168 @@
+---
+# star-caster health — flat playbook landing four NUC health checks captured in
+# the 2026-04-27 stocktake. Scoped directly to star-caster.
+#
+# Tasks:
+#   1. Re-declare the four NFS mounts with explicit opts that exclude `fsc`.
+#      Defensive even though current fstab uses `defaults` (no `fsc`); pins the
+#      opts so a future kernel/userland default flip can't reintroduce it.
+#      Source: vault note `nfs-drop-fsc-mount-option.md`; H6 brief
+#      `p200-fscache-duplicate-cookie-nfs.md` (FS-Cache is symptom not cause).
+#   2. Add `ansible` user to the `docker` group so `docker ps` works without
+#      sudo. Source: vault note `docker-group-membership-ansible-user.md`.
+#   3. Clean stale apt list partials (only when `apt list --upgradable` hangs)
+#      and refresh the cache so upgrade triage isn't blocked. Source: vault
+#      notes `apt-upgrade-status-diagnostic.md` + `nuc-apt-docker-update.md`.
+#   4. Surface Tailscale state (status + IPv4) without attempting auth — `up`
+#      is interactive, deferred to Z. Source: vault note
+#      `tailscale-reauth-star-caster.md`.
+#   5. End-of-play diagnostic snapshot: fsc count in /proc/mounts, ansible's
+#      groups, upgradable-package count, Tailscale status. All `debug:`'d so
+#      both `--check` and apply runs surface them.
+#
+# Flat playbook intentionally — no `roles/` decomposition until the legacy
+# `setup_nuc.yml` refactor lands (AGENTS.md §4 Backlog "Later").
+
+- name: Star-caster health checks (NFS fsc, docker group, apt, tailscale diag)
+  hosts: star-caster
+  become: true
+  gather_facts: false
+
+  vars:
+    # Sane NFS opts — explicitly drop `fsc` (FS-Cache). Match the kernel-applied
+    # defaults observed on star-caster 2026-04-27 (vers=4.1, hard, timeo=600,
+    # retrans=2) plus _netdev for cloud-init / boot ordering. `nosharecache` is
+    # required because /mnt/backup and /mnt/backups/star-caster both target
+    # 192.168.11.15:/volume1/backups/star-caster — without it, remount of the
+    # second one trips "is busy or already mounted or sharecache fail" because
+    # the kernel's NFSv4 shared-superblock check rejects opt divergence.
+    nfs_opts: "rw,hard,timeo=600,retrans=2,nfsvers=4.1,nosharecache,_netdev"
+    # Mounts safe to remount in place — no nested child mount, no shared export
+    # with another currently-mounted point (or already remounted with nosharecache).
+    nfs_mounts_remountable:
+      - { path: /media, src: "192.168.11.15:/volume1/media" }
+      - { path: /mnt/backup, src: "192.168.11.15:/volume1/backups/star-caster" }
+      - { path: /mnt/backups/star-caster, src: "192.168.11.15:/volume1/backups/star-caster" }
+    # /mnt/backups has /mnt/backups/star-caster mounted *inside* it, so umount
+    # fails with "device is busy" during opt-divergence remount. Manage fstab
+    # only — runtime already has sane opts (vers=4.1, hard, timeo=600, retrans=2,
+    # no fsc) per /proc/mounts; the next reboot picks up the pinned line.
+    nfs_mounts_fstab_only:
+      - { path: /mnt/backups, src: "192.168.11.15:/volume1/backups" }
+
+  tasks:
+    # ---------- 1. NFS mount health check (drop fsc, pin opts) ----------
+    - name: NFS mounts re-declared without fsc, remounted with pinned opts
+      ansible.posix.mount:
+        path: "{{ item.path }}"
+        src: "{{ item.src }}"
+        fstype: nfs
+        opts: "{{ nfs_opts }}"
+        state: mounted
+      loop: "{{ nfs_mounts_remountable }}"
+      loop_control:
+        label: "{{ item.path }}"
+
+    - name: NFS mount fstab pinned (no remount; nested-child blocks umount)
+      ansible.posix.mount:
+        path: "{{ item.path }}"
+        src: "{{ item.src }}"
+        fstype: nfs
+        opts: "{{ nfs_opts | replace(',nosharecache', '') }}"
+        state: present
+      loop: "{{ nfs_mounts_fstab_only }}"
+      loop_control:
+        label: "{{ item.path }}"
+
+    # ---------- 2. docker group membership for ansible user ----------
+    - name: Ansible user in docker group (so docker ps works without sudo)
+      ansible.builtin.user:
+        name: ansible
+        groups: docker
+        append: true
+
+    # ---------- 3. apt cache cleanup (conditional) + update ----------
+    - name: Probe whether apt list --upgradable returns within 15s
+      ansible.builtin.shell: |
+        set -o pipefail
+        timeout 15 apt list --upgradable >/dev/null 2>&1
+      args:
+        executable: /bin/bash
+      register: apt_probe
+      changed_when: false
+      failed_when: false
+      check_mode: false
+
+    - name: Stale apt list partials removed (only when probe hangs)
+      ansible.builtin.shell: |
+        set -o pipefail
+        rm -rf /var/lib/apt/lists/*
+      args:
+        executable: /bin/bash
+        removes: /var/lib/apt/lists/lock
+      when: apt_probe.rc != 0
+
+    - name: Apt cache refreshed
+      ansible.builtin.apt:
+        update_cache: true
+        cache_valid_time: 3600
+
+    # ---------- 4. Tailscale state surface (no auth) ----------
+    - name: Tailscale status captured (read-only; auth deferred to Z)
+      ansible.builtin.command: tailscale status
+      register: tailscale_status
+      changed_when: false
+      failed_when: false
+      check_mode: false
+
+    - name: Tailscale IPv4 captured (read-only)
+      ansible.builtin.command: tailscale ip -4
+      register: tailscale_ip
+      changed_when: false
+      failed_when: false
+      check_mode: false
+
+    - name: Tailscale state surfaced
+      ansible.builtin.debug:
+        msg:
+          - "tailscale status rc={{ tailscale_status.rc }}"
+          - "{{ tailscale_status.stdout_lines | default([]) }}"
+          - "{{ tailscale_status.stderr_lines | default([]) }}"
+          - "tailscale ip -4 rc={{ tailscale_ip.rc }}"
+          - "{{ tailscale_ip.stdout_lines | default([]) }}"
+          - "{{ tailscale_ip.stderr_lines | default([]) }}"
+
+    # ---------- 5. End-of-play diagnostic snapshot ----------
+    - name: Fsc lines in /proc/mounts (expect zero)
+      ansible.builtin.shell: |
+        set -o pipefail
+        grep -c fsc /proc/mounts || true
+      args:
+        executable: /bin/bash
+      register: fsc_count
+      changed_when: false
+      check_mode: false
+
+    - name: Ansible user group membership
+      ansible.builtin.command: id ansible
+      register: id_ansible
+      changed_when: false
+      check_mode: false
+
+    - name: Upgradable package count (timeout 30s)
+      ansible.builtin.shell: |
+        set -o pipefail
+        timeout 30 apt list --upgradable 2>/dev/null | tail -n +2 | wc -l
+      args:
+        executable: /bin/bash
+      register: upgradable_count
+      changed_when: false
+      check_mode: false
+
+    - name: Diagnostic snapshot
+      ansible.builtin.debug:
+        msg:
+          - "fsc lines in /proc/mounts: {{ fsc_count.stdout | trim }}"
+          - "id ansible: {{ id_ansible.stdout | trim }}"
+          - "upgradable packages: {{ upgradable_count.stdout | trim }}"
+          - "tailscale status rc: {{ tailscale_status.rc }}"
