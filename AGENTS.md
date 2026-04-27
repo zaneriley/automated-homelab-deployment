@@ -77,7 +77,7 @@ Every tracked top-level entry, with a one-line purpose. Local conventions live n
 | `roles/` | WHAT — function-named, OS-dispatched inside via `import_tasks: "{{ ansible_os_family }}.yml"` (target shape — single-OS today, see §3 note below) |
 | `playbooks/` | One-shot host-targeted plays for cross-cutting fixes that don't yet warrant a role. Flat by design pending the `nuc_lifecycle` role refactor (ADR-0008); plays migrate into roles when their scope generalizes. Filename = the host or capability the play targets, never the operator's mental state (no `*-fixups.yml`). |
 | `dotfiles/` | Ansible role payload (NOT chezmoi/stow); symlinked into `~/.config/<tool>/` by `shell_env` |
-| `scripts/` | Operator helpers (Tart rehearsal today); prefer role-internal for new ones; junk-drawer cliff at ~3 distinct domains |
+| `scripts/` | Operator helpers — VM rehearsal in two flavors: Mac via Tart (`bake-rehearse-base.sh`, `rehearse-tart.sh`, `rehearse-workstation.sh`) and Linux fleet via Lima + cloud-init (per ADR-0015). Prefer role-internal for new helpers; junk-drawer cliff at ~3 distinct domains still applies (today: Mac rehearsal + Linux rehearsal = two flavors of one domain). |
 | `terraform/<vendor>/` | Per-vendor declarative state — `cloudflare/` today, `tailscale/` next |
 | ~~`cloud-init/`~~ | Removed 2026-04-27. Held a never-working Subiquity autoinstall config (stalled at disk-format step) plus PII (hashed password, embedded SSH keys). Forward path: cloud-image cloud-init via netboot.xyz/PXE — design captured in vault note `Backlog/automated-homelab-deployment/fleet-automated-provisioning.md`; tracks the existing §4 Later "PXE / netboot.xyz fleet provisioning" item. |
 | `docs/runbooks/` | Human procedures (canonical) — `manual-steps.md`, future how-tos |
@@ -171,6 +171,8 @@ Every commit that touches a role or config must pass:
 5. Managed macOS settings go through `community.general.osx_defaults` — never `command: defaults write`
 6. Destructive effects are default-off behind a variable gate
 
+**Fleet-host plays — rehearse first (per ADR-0015).** For non-trivial Linux fleet plays (anything that mutates persistent state), the second-`make check`-zero-changes idempotency proof in item 4 comes from a Lima VM rehearsal *before* fleet apply: `make check-rehearse` + `make apply-rehearse` + second `make check-rehearse` reports zero changes. Only a green rehearsal earns the right to run against real fleet hardware. Mac plays continue to use Tart per the existing `scripts/rehearse-*` helpers when destructive `apple_cruft` layers are involved.
+
 ### B. Per-role gate
 
 Before a role lands on `main`:
@@ -197,7 +199,12 @@ The harness is "working" when:
 ### What we do NOT rely on
 
 - CI against the real machine. CI runs lint + `--syntax-check` on a Linux runner only.
-- Tart VMs until destructive `apple_cruft` layers go live. For phase 1, the real Mac is the sandbox.
+- Tart VMs for Mac rehearsal until destructive `apple_cruft` layers go live. For phase 1, the real Mac is the sandbox.
+
+### What we DO rely on for fleet rehearsal (per ADR-0015)
+
+- **Linux fleet:** Lima + cloud-init VM rehearsal is a first-class gate for non-trivial plays — anything that mutates persistent state (package installs, kernel upgrades, service config, mount points, user/group changes). Read-only diagnostics and pure-config-file plays still go through the per-commit gate (§5A) only.
+- **Limits acknowledged:** VM rehearsal cannot fully simulate host-specific NFS mounts, real Tailscale auth state, real container/volume state, or hardware-attached devices. A green rehearsal is necessary, not sufficient — the production apply still requires operator presence and out-of-band verification.
 
 ### Commits, secrets, style
 

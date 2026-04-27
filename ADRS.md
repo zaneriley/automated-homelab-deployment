@@ -17,6 +17,44 @@ Format:
 
 ---
 
+## ADR-0015: Linux fleet VM rehearsal via Lima + cloud-init
+**Date:** 2026-04-27
+**Status:** Accepted
+**Decision:** Non-trivial Ansible plays targeting the Linux fleet (`nucs`, `pis`, future Linux `nas`) rehearse on a local Lima VM before they touch the real fleet host. Lifecycle: bake a base image (today via Lima's stock Ubuntu 22.04 cloud-image template), clone it for the rehearsal, run `make check-rehearse` + `make apply-rehearse` against the clone, destroy the clone after. Mac rehearsal stays Tart per the existing `scripts/{bake-rehearse-base,rehearse-tart,rehearse-workstation}.sh`. Lima-for-Linux + Tart-for-Mac is the deliberate split: each tool is best-fit for its OS family.
+
+"Non-trivial" means anything that mutates persistent state — package installs, kernel upgrades, service configuration, mount points, user/group changes. Read-only diagnostics and pure-config-file plays don't need rehearsal; the per-commit gate (§5A) is sufficient.
+
+**Tooling pick — Lima:** Lima is the substrate of Colima, which is in §2's ratified stack. Native Apple Silicon. Cloud-init seed is first-class — Lima boots a pre-installed Ubuntu cloud image and runs cloud-init on first boot from the seed. No new vendor in the stack; no language-runtime install on the master node.
+
+**Note on the rehearsal seed vs the production seed (2026-04-27):** today these are *different*. Rehearsal uses Lima's stock cloud-image template; production fleet provisioning has no working automated seed (the harness's prior `cloud-init/user-data` was Subiquity *autoinstall* — never worked, deleted same day). When fleet provisioning gets built (tracked in vault note `Backlog/automated-homelab-deployment/fleet-automated-provisioning.md` — pivot to cloud-image cloud-init via netboot.xyz/PXE), the production seed will be the same shape as Lima's, and rehearsal will exercise the actual provisioning seed. Until then the gate proves "the play is internally consistent against a clean Ubuntu 22.04," not "the play is safe against the lab's specific provisioning sequence."
+
+**Alternatives considered (and rejected):**
+- **Multipass.** Canonical stewardship is fine but the cloud-init seed handling is less direct than Lima's, and adopting it would import a second VM tool alongside Tart (Mac) when Lima already rides on Colima's substrate.
+- **UTM / qemu by hand.** No declarative seed integration; the rehearsal would drift from the production cloud-init path. Defeats the purpose.
+- **A staging fleet host.** Real hardware is the most faithful target but doesn't exist for `nucs` (one host, `star-caster`) and won't until the household-management NUC arrives. Even then, "real but spare" hardware is high-cost rehearsal capacity for a per-commit-or-per-play gate.
+- **Skip rehearsal; rely on `--check --diff` only.** The current state. `--check` doesn't catch destructive package operations correctly (kernel upgrade can't be dry-run faithfully; apt holds and dpkg state aren't always check-mode-honest). The forcing function below is exactly that gap.
+- **Tart for Linux too.** Tart is macOS-VM-shaped; Linux support exists but is not its strong suit and the cloud-init story is weaker than Lima's. Splitting by OS family keeps each tool in its lane.
+
+**Convergence trace:**
+- Peer-review session 2026-04-27 surfaced the gap. The forcing function: a destructive `nuc-apt-docker-upgrade-destructive` task queued against `star-caster` — 201 packages including a kernel — applied to the only Linux fleet host with no rehearsal step in between. Z framed it as household-impact protection, not engineering hygiene: *"test things out before applying them to real hardware, where it could impact my family and friends."*
+- The harness was scaffolded around one Linux host (`star-caster`) treated as both sandbox and production target. Fine at one host, brittle as the fleet grows — household-management NUC arrives next, 847 NAS migration follows. Adding the rehearsal substrate now is cheaper than retrofitting it under fleet-growth pressure.
+
+**Rationale.** The harness's correctness witness today is the second `make check` reporting zero changes (ADR-0009). That witness only fires *after* state has been changed on the target host. For destructive plays against the only host of its kind, that's a hard place to discover a problem. VM rehearsal moves the witness *before* fleet apply: the Lima clone is the disposable target, the second-`make check`-zero-changes idempotency proof comes from the rehearsal first, and only a green rehearsal earns the right to run against real fleet hardware. ADR-0008's lifecycle-aligned roles already gate work by phase; VM rehearsal is the gate that sits between *role written* and *role applied to fleet*.
+
+The split (Lima for Linux fleet, Tart for Mac) mirrors the function-named-roles + facts-based-OS-dispatch pattern of ADR-0013: each OS family gets the substrate that fits it, dispatch happens at the operator-tooling layer rather than being conflated.
+
+**Limits acknowledged (so future readers don't over-trust the gate):**
+- VM rehearsal cannot fully simulate host-specific NFS mounts, real Tailscale auth state, real container/volume state, hardware-attached devices (UPS, NUT, USB), or network-segment-specific routing. The gate proves the play is internally consistent and idempotent against a clean cloud-init-seeded clone. It does not prove the play is safe against a real host's accumulated state.
+- Kernel upgrades exercise reboot paths in the VM, but the VM's bootloader / initrd / hardware probe is not the fleet host's. A green rehearsal is necessary, not sufficient.
+- The rehearsal is a *gate*, not a *guarantee*. The production apply still requires operator presence and out-of-band verification per the per-commit gate (§5A).
+
+**Consequences:**
+- AGENTS.md §3 `scripts/` row updated to acknowledge both rehearsal flavors (Mac Tart + Linux Lima) and cite this ADR. Junk-drawer cliff warning at ~3 distinct domains stays as guardrail.
+- AGENTS.md §5C "What we do NOT rely on" — the bullet `Tart VMs until destructive apple_cruft layers go live. For phase 1, the real Mac is the sandbox.` is replaced with an OS-split bullet. VM rehearsal IS now relied on for non-trivial Linux fleet plays; Tart-for-Mac remains gated to destructive `apple_cruft` layers.
+- AGENTS.md §5A acceptance gates gain a note that for non-trivial fleet-host plays, the second-`make check`-zero-changes idempotency proof comes from the Lima rehearsal first, before fleet apply.
+- New `scripts/` entries for Lima rehearsal (built in parallel by another agent under `feat/nuc-rehearsal`) — flavor-paired with the existing Tart helpers. Junk-drawer cliff watch: today's domains are *Mac rehearsal* and *Linux rehearsal* (one domain each, two flavors). A third distinct domain triggers the cliff per ADR-0013.
+- Cross-refs: ADR-0008 (lifecycle-aligned roles — VM rehearsal is the gate before role layers run on real fleet hosts), ADR-0013 (`scripts/` directory contract is extended, not violated).
+
 ## ADR-0014: Retire the Nextra docs site to `legacy/docs-site/`
 **Date:** 2026-04-26
 **Status:** Accepted
