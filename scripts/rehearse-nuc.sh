@@ -34,25 +34,32 @@
 #            the script does a single --check --diff pass (rehearsal
 #            preview, no state mutated even inside the VM).
 #   --keep   Don't destroy the clone on exit. Useful for postmortem.
+#   --       Sentinel. Anything after `--` is forwarded verbatim to every
+#            ansible-playbook invocation (--check pass, --apply pass, and
+#            the second --check idempotency pass). Use this to thread
+#            `-e var=value` for plays that gate on extra-vars (e.g. the
+#            destructive apt-upgrade play's `apt_upgrade_confirm`).
 
 set -euo pipefail
 
 APPLY=0
 KEEP=0
 PLAY=""
+EXTRA_ARGS=()
 while [ $# -gt 0 ]; do
   case "$1" in
     --apply) APPLY=1; shift ;;
     --keep)  KEEP=1; shift ;;
     --help|-h)
-      sed -n '2,30p' "$0"
+      sed -n '2,35p' "$0"
       exit 0
       ;;
+    --) shift; EXTRA_ARGS=("$@"); break ;;
     -*) echo "unknown flag: $1" >&2; exit 2 ;;
     *)  PLAY="$1"; shift ;;
   esac
 done
-[ -n "$PLAY" ] || { echo "usage: $0 [--apply] [--keep] PLAY" >&2; exit 2; }
+[ -n "$PLAY" ] || { echo "usage: $0 [--apply] [--keep] PLAY [-- <extra ansible-playbook args>]" >&2; exit 2; }
 
 BASE_VM="nuc-rehearse-base"
 TIMESTAMP="$(date +%Y%m%d-%H%M%S)"
@@ -165,8 +172,8 @@ if [ "$APPLY" = 0 ]; then
   # Mirrors `make check`: shows what *would* change without mutating
   # the VM. Useful for "what does this role want to do on a fresh
   # NUC?" without committing to the apply path yet.
-  log "Check pass: ansible-playbook --check --diff $PLAY (target group: nucs)"
-  ansible-playbook -i "$INV_FILE" --check --diff "$PLAY" 2>&1 | tee "$CHECK1_LOG" | tee -a "$LOG_FILE"
+  log "Check pass: ansible-playbook --check --diff $PLAY ${EXTRA_ARGS[*]+${EXTRA_ARGS[*]}} (target group: nucs)"
+  ansible-playbook -i "$INV_FILE" --check --diff "$PLAY" ${EXTRA_ARGS[@]+"${EXTRA_ARGS[@]}"} 2>&1 | tee "$CHECK1_LOG" | tee -a "$LOG_FILE"
 
   CHECK1_RECAP=$(grep "^$VM_NAME" "$CHECK1_LOG" | tail -1 || true)
   [ -n "$CHECK1_RECAP" ] || die "--check produced no PLAY RECAP for $VM_NAME"
@@ -177,8 +184,8 @@ if [ "$APPLY" = 0 ]; then
 fi
 
 # -- Apply path: run for real, then prove idempotency --
-log "Apply: ansible-playbook $PLAY (target group: nucs)"
-ansible-playbook -i "$INV_FILE" "$PLAY" 2>&1 | tee "$APPLY_LOG" | tee -a "$LOG_FILE"
+log "Apply: ansible-playbook $PLAY ${EXTRA_ARGS[*]+${EXTRA_ARGS[*]}} (target group: nucs)"
+ansible-playbook -i "$INV_FILE" "$PLAY" ${EXTRA_ARGS[@]+"${EXTRA_ARGS[@]}"} 2>&1 | tee "$APPLY_LOG" | tee -a "$LOG_FILE"
 
 APPLY_RECAP=$(grep "^$VM_NAME" "$APPLY_LOG" | tail -1 || true)
 [ -n "$APPLY_RECAP" ] || die "apply produced no PLAY RECAP for $VM_NAME"
@@ -186,8 +193,8 @@ echo "$APPLY_RECAP" | grep -qE 'failed=0\b' || die "apply reported failures: $AP
 echo "$APPLY_RECAP" | grep -qvE 'changed=0\b' || warn "apply reported zero changes — was the VM already in target state?"
 
 # -- Idempotency proof: second --check must report changed=0 --
-log "Idempotency check (--check, expect changed=0)"
-ansible-playbook -i "$INV_FILE" --check "$PLAY" 2>&1 | tee "$CHECK2_LOG" | tee -a "$LOG_FILE"
+log "Idempotency check (--check, expect changed=0) ${EXTRA_ARGS[*]+with extra args: ${EXTRA_ARGS[*]}}"
+ansible-playbook -i "$INV_FILE" --check "$PLAY" ${EXTRA_ARGS[@]+"${EXTRA_ARGS[@]}"} 2>&1 | tee "$CHECK2_LOG" | tee -a "$LOG_FILE"
 
 CHECK2_RECAP=$(grep "^$VM_NAME" "$CHECK2_LOG" | tail -1 || true)
 [ -n "$CHECK2_RECAP" ] || die "second --check produced no PLAY RECAP"

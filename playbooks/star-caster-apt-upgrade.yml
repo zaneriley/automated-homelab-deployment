@@ -1,0 +1,299 @@
+---
+# star-caster destructive apt upgrade — kernel + Docker engine bump + everything
+# else queued (~201 packages as surfaced 2026-04-27 by `star-caster-health`).
+#
+# This play IS destructive. Per AGENTS.md §5A item 6, destructive effects are
+# default-off behind a variable gate. Pass `-e apt_upgrade_confirm=true` to
+# arm. Without that, the pre-flight assert halts the play before any state is
+# touched.
+#
+# Vault note (acceptance criteria + sequencing):
+#   ~/repos/obsidian-notes/Backlog/homelab-media-streaming/
+#   nuc-apt-docker-upgrade-destructive.md
+#
+# Rehearsal pattern (ADR-0015):
+#   1. make rehearse-nuc-bake               (one-time)
+#   2. scripts/rehearse-nuc.sh --apply \
+#        playbooks/star-caster-apt-upgrade.yml \
+#        -e apt_upgrade_confirm=true \
+#        -e target_hosts=nucs_rehearsal
+#   The rehearsal validates the *procedure* against a fresh Ubuntu 22.04
+#   cloud-image VM. It does NOT validate "the exact 201 packages on
+#   star-caster" — the cloud image is a different package set. The gate
+#   proves: dist_upgrade runs to completion, reboot path executes if kernel
+#   bumped, post-reboot probes return sane values, no upstream-package break
+#   reaches us. The production apply still needs operator presence.
+#
+# Real apply (against the actual host) — operator-attended only, NEVER
+# autonomous:
+#   ansible-playbook playbooks/star-caster-apt-upgrade.yml \
+#     -e apt_upgrade_confirm=true
+#
+# Why `hosts:` is parametric: production targets `star-caster`; rehearsal
+# targets the Lima VM, which the rehearsal script parks in `nucs_rehearsal`.
+# A jinja-defaulted `hosts:` keeps the same play file usable for both without
+# duplication.
+#
+# Why `--skip-tags destructive` is supported: tagging the dist_upgrade +
+# reboot tasks with `destructive` lets an operator do an all-but-the-bang
+# walkthrough (pre-state capture, cache refresh, count) without touching
+# anything that mutates persistent state. Useful for handover or auditing.
+#
+# What this play does NOT do (intentional):
+#   - Container state. Plex / arr stack is currently down for foundation
+#     work; this play does not `docker compose up` or stop/start any
+#     container. That's a separate operator decision after upgrade.
+#   - Service-level smoke. Beyond `systemctl is-active docker tailscaled`,
+#     no functional probe of Plex / Overseerr / etc.
+#   - Tailscale re-auth. `tailscale up` is interactive; deferred to Z.
+
+- name: Star-caster destructive apt upgrade (gated; kernel + docker + ~201 packages)
+  hosts: "{{ target_hosts | default('star-caster') }}"
+  become: true
+  gather_facts: true
+
+  vars:
+    # Default OFF. Operator MUST pass `-e apt_upgrade_confirm=true` to arm
+    # the destructive tasks. Per AGENTS.md §5A item 6 — gate variable named
+    # so that typing it on the CLI is the operator's explicit affirmation,
+    # not something cute or guessable.
+    apt_upgrade_confirm: false
+
+  tasks:
+    # ---------- 0. Pre-flight gate ----------
+    # Halt before anything mutates state if the operator didn't arm the
+    # play. The assert runs even in check mode so dry-run operators get the
+    # same loud signal.
+    - name: Pre-flight — apt_upgrade_confirm must be true to proceed
+      ansible.builtin.assert:
+        that:
+          - apt_upgrade_confirm | bool
+        fail_msg: >-
+          Refusing to run. This play does a destructive dist-upgrade and may
+          reboot the host. Pass `-e apt_upgrade_confirm=true` on the CLI to
+          arm. See playbook header for context.
+        success_msg: >-
+          apt_upgrade_confirm=true received. Proceeding with destructive
+          upgrade sequence.
+
+    # ---------- 1. Capture pre-state ----------
+    # Surfaced via debug: so the rehearsal/apply log records the before-state
+    # without needing operator out-of-band reads. `command:` (not `shell:`)
+    # because none of these need shell features and `command:` keeps the
+    # arg list explicit. `changed_when: false` because reads aren't changes.
+    - name: Pre-state — installed package count (dpkg)
+      ansible.builtin.command: dpkg -l
+      register: pre_dpkg
+      changed_when: false
+      check_mode: false
+
+    - name: Pre-state — running kernel
+      ansible.builtin.command: uname -r
+      register: pre_kernel
+      changed_when: false
+      check_mode: false
+
+    - name: Pre-state — docker engine version (full multi-line; parse later if needed)
+      ansible.builtin.command: docker version
+      register: pre_docker
+      changed_when: false
+      failed_when: false  # docker may be down; record state, don't fail
+      check_mode: false
+
+    - name: Pre-state — tailscale daemon version
+      ansible.builtin.command: tailscale version
+      register: pre_tailscale
+      changed_when: false
+      failed_when: false
+      check_mode: false
+
+    - name: Pre-state — installed kernel meta-package (whichever Ubuntu flavour applies)
+      # Different cloud images carry different kernel meta-packages
+      # (`linux-image-generic` on hardware, `linux-image-virtual`/
+      # `linux-image-kvm` on most cloud-init images). Rather than guess,
+      # ask dpkg for everything matching `linux-image-*` and capture the
+      # highest installed version. Used downstream to reason about kernel
+      # bumps independent of the meta-package name.
+      ansible.builtin.shell: |
+        set -o pipefail
+        dpkg-query -W -f='${Package} ${Version}\n' 'linux-image-*' 2>/dev/null \
+          | grep -v ' $' \
+          | sort -u
+      args:
+        executable: /bin/bash
+      register: pre_kernel_pkg
+      changed_when: false
+      failed_when: false
+      check_mode: false
+
+    - name: Pre-state surfaced
+      ansible.builtin.debug:
+        msg:
+          - "installed packages (dpkg lines): {{ pre_dpkg.stdout_lines | length }}"
+          - "running kernel: {{ pre_kernel.stdout | trim }}"
+          - "docker version (rc={{ pre_docker.rc }}):"
+          - "{{ pre_docker.stdout_lines | default([]) }}"
+          - "tailscale version (first line): {{ pre_tailscale.stdout_lines[0] | default('(unavailable)') }}"
+          - "linux-image-generic installed: {{ pre_kernel_pkg.stdout | default('(none)') | trim }}"
+
+    # ---------- 2. Apt cache refresh ----------
+    # `cache_valid_time` is a no-op when stale; on a fresh VM (or a host
+    # whose cache is older than 1 hr) it triggers an `apt update`. Idempotent.
+    - name: Apt cache refreshed
+      ansible.builtin.apt:
+        update_cache: true
+        cache_valid_time: 3600
+
+    # ---------- 3. Self-report upgradable count ----------
+    # `apt list --upgradable` on its own emits a warning header to stderr
+    # ("WARNING: apt does not have a stable CLI interface...") which we
+    # discard. tail -n +2 strips the "Listing..." line. The play's debug
+    # output then says "upgrading N packages" before any state changes.
+    - name: Probe upgradable package count
+      ansible.builtin.shell: |
+        set -o pipefail
+        apt list --upgradable 2>/dev/null | tail -n +2 | wc -l
+      args:
+        executable: /bin/bash
+      register: upgradable_count
+      changed_when: false
+      check_mode: false
+
+    - name: Upgradable count surfaced (this is what dist-upgrade will touch)
+      ansible.builtin.debug:
+        msg: "About to upgrade {{ upgradable_count.stdout | trim }} packages."
+
+    # ---------- 4. Destructive: dist-upgrade ----------
+    # `upgrade=dist` (not `upgrade=yes`) is the right pick when kernels are
+    # in the upgrade set: `dist_upgrade` will install/remove packages as
+    # needed to satisfy new dependencies (kernel meta-package bumps pull in
+    # `linux-image-X.Y.Z` and may remove the old image). `upgrade=yes`
+    # (apt-get upgrade) holds back anything requiring removal — which means
+    # it would silently *skip* the kernel bump.
+    #
+    # `autoremove: yes` cleans up orphan packages (old kernels, transitive
+    # deps no longer needed). `purge: yes` ensures fully-replaced packages
+    # don't leave config cruft behind in `/etc/`.
+    #
+    # The Ansible `apt` module wraps `apt-get dist-upgrade -y` — non-
+    # interactive. The harness runs unattended once armed; the operator's
+    # presence is the gate above this task, not an interactive prompt.
+    #
+    # Tagged `destructive` so an operator can do a dry walkthrough with
+    # `--skip-tags destructive` for handover / audit.
+    - name: Apt dist-upgrade (kernel + everything queued; autoremove + purge)
+      ansible.builtin.apt:
+        upgrade: dist
+        autoremove: true
+        purge: true
+      register: apt_dist_upgrade
+      tags: [destructive]
+
+    # ---------- 5. Detect kernel bump → conditional reboot ----------
+    # Ubuntu's `linux-image-*` post-install hook touches
+    # `/var/run/reboot-required` whenever a kernel (or other reboot-
+    # mandating package) is upgraded. That marker is the canonical
+    # "needs reboot" signal — more reliable than comparing dpkg
+    # versions of a guessed meta-package name across cloud-image
+    # flavours. The companion file `/var/run/reboot-required.pkgs`
+    # lists the packages that requested the reboot; we surface it for
+    # the log.
+    - name: Post-upgrade — installed kernel meta-package state (post-dist-upgrade)
+      ansible.builtin.shell: |
+        set -o pipefail
+        dpkg-query -W -f='${Package} ${Version}\n' 'linux-image-*' 2>/dev/null \
+          | grep -v ' $' \
+          | sort -u
+      args:
+        executable: /bin/bash
+      register: post_kernel_pkg
+      changed_when: false
+      failed_when: false
+      check_mode: false
+
+    - name: Detect whether dist-upgrade requested a reboot (kernel or otherwise)
+      ansible.builtin.stat:
+        path: /var/run/reboot-required
+      register: reboot_marker
+
+    - name: Capture which packages requested a reboot (if any)
+      ansible.builtin.slurp:
+        src: /var/run/reboot-required.pkgs
+      register: reboot_pkgs
+      when: reboot_marker.stat.exists
+      failed_when: false
+
+    - name: Kernel/reboot status surfaced
+      ansible.builtin.debug:
+        msg:
+          - "linux-image-* installed before:"
+          - "{{ pre_kernel_pkg.stdout_lines | default([]) }}"
+          - "linux-image-* installed after:"
+          - "{{ post_kernel_pkg.stdout_lines | default([]) }}"
+          - "/var/run/reboot-required exists: {{ reboot_marker.stat.exists }}"
+          - >-
+            packages requesting reboot:
+            {{ (reboot_pkgs.content | default('') | b64decode).split('\n')
+               if reboot_marker.stat.exists else [] }}
+
+    - name: Compute kernel_bumped (= reboot marker present)
+      ansible.builtin.set_fact:
+        kernel_bumped: "{{ reboot_marker.stat.exists | bool }}"
+
+    # `reboot:` module disconnects, waits for the host to come back, and
+    # re-establishes SSH. 600s (10 min) covers a slow Ubuntu boot with a new
+    # initrd. `pre_reboot_delay: 5` gives systemd a moment to finish unit
+    # shutdown before the reboot fires.
+    #
+    # Tagged `destructive` so `--skip-tags destructive` skips it too.
+    - name: Reboot if kernel was bumped
+      ansible.builtin.reboot:
+        reboot_timeout: 600
+        pre_reboot_delay: 5
+        msg: "Reboot to load upgraded kernel (Ansible apt dist-upgrade)"
+      when: kernel_bumped | bool
+      tags: [destructive]
+
+    # ---------- 6. Post-reboot stat probes ----------
+    # After (possibly) cycling, capture the after-state. Same shape as
+    # pre-state so log diffs are trivially comparable.
+    - name: Post-state — running kernel
+      ansible.builtin.command: uname -r
+      register: post_kernel
+      changed_when: false
+      check_mode: false
+
+    - name: Post-state — docker engine version (full multi-line)
+      ansible.builtin.command: docker version
+      register: post_docker
+      changed_when: false
+      failed_when: false
+      check_mode: false
+
+    - name: Post-state — tailscale daemon version
+      ansible.builtin.command: tailscale version
+      register: post_tailscale
+      changed_when: false
+      failed_when: false
+      check_mode: false
+
+    - name: Post-state — collect service facts (so we can read docker + tailscaled state)
+      ansible.builtin.service_facts:
+
+    - name: Post-state — installed package count (dpkg)
+      ansible.builtin.command: dpkg -l
+      register: post_dpkg
+      changed_when: false
+      check_mode: false
+
+    - name: Post-state surfaced (compare to pre-state above)
+      ansible.builtin.debug:
+        msg:
+          - "installed packages (dpkg lines): {{ post_dpkg.stdout_lines | length }} (was {{ pre_dpkg.stdout_lines | length }})"
+          - "running kernel: {{ post_kernel.stdout | trim }} (was {{ pre_kernel.stdout | trim }})"
+          - "docker version (rc={{ post_docker.rc }}):"
+          - "{{ post_docker.stdout_lines | default([]) }}"
+          - "tailscale version (first line): {{ post_tailscale.stdout_lines[0] | default('(unavailable)') }}"
+          - "docker.service state: {{ ansible_facts.services['docker.service'].state | default('(absent)') }}"
+          - "tailscaled.service state: {{ ansible_facts.services['tailscaled.service'].state | default('(absent)') }}"
+          - "kernel rebooted: {{ kernel_bumped }}"
