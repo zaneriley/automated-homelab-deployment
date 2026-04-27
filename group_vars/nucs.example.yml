@@ -1,0 +1,9 @@
+---
+# Nucs-group config template. Copy to group_vars/nucs.yml (gitignored)
+# and adjust. Real secrets are resolved via community.general.onepassword
+# lookup (ADR-0007) — this file should NOT contain any secrets.
+
+# === Role defaults live in roles/<role>/defaults/main.yml. ===
+# No nucs-targeted roles exist yet (2026-04-27). When the first one lands
+# (likely from refactoring legacy/ansible/setup_nuc.yml — see AGENTS.md §4
+# "Later"), put group-scoped overrides here.
