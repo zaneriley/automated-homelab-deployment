@@ -1,3 +1,12 @@
+# ARCHIVED 2026-04-27 — secrets migrated to 1Password per ADR-0007.
+# The encrypted body below is retained verbatim for git archaeology.
+# DO NOT use as a vars_file. The historical passphrase is publicly known.
+# Migrated items live in 1Password vault "Private":
+#   - Homelab Cloudflare API     (account_id, credential)
+#   - Homelab Discord Backup Webhook (credential)
+#   - Homelab Borg Passphrase    (password)
+# See legacy/ansible/{setup_nuc,backup}.yml for the lookup() call sites.
+#
 $ANSIBLE_VAULT;1.1;AES256
 65393637333162303638633761323665316166363836633163393936393464613263393034653337
 3437316231663634386363666231396138643661333765340a303539333339343636366339323066

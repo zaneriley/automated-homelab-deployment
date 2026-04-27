@@ -13,11 +13,12 @@
 - name: Set up backups on NUCs
   hosts: nucs
   become: yes
+  vars:
+    # Secrets resolved once per play via 1Password lookup (ADR-0007).
+    # Replaces vault.yml include; biometric auth happens at task-eval time.
+    borg_passphrase: "{{ lookup('community.general.onepassword', 'Homelab Borg Passphrase', field='password', vault='Private') }}"
+    discord_webhook: "{{ lookup('community.general.onepassword', 'Homelab Discord Backup Webhook', field='credential', vault='Private') }}"
   tasks:
-    - name: Include Vault variables
-      include_vars:
-        file: vault.yml
-
     - name: Check if NFS server is reachable
       wait_for:
         host: "{{ hostvars['NAS'].ansible_host }}"
