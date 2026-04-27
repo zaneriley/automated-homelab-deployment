@@ -1,0 +1,14 @@
+---
+# Group vars for the `nucs_rehearsal` group (Lima VM rehearsal targets).
+# Copy to group_vars/nucs_rehearsal.yml (gitignored) and adjust.
+#
+# Most rehearsal runs need nothing here — scripts/rehearse-nuc.sh
+# writes ansible_host / ansible_user / ansible_python_interpreter /
+# ansible_ssh_common_args directly into the ephemeral inventory.
+# Variables that genuinely belong here are overrides for role-level
+# defaults that should differ in the VM vs. on real hardware (e.g.
+# disabling a sysstat tweak that needs real disk).
+#
+# Do NOT put real secrets here — the rehearsal VM is throwaway and
+# should not be reachable by 1Password lookups. If a play is gated on
+# a secret, mock it here with a literal placeholder string.
