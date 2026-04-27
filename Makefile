@@ -3,7 +3,7 @@ SHELL := /bin/bash
 
 PLAYBOOK := site.yml
 
-.PHONY: help lint syntax check apply smoke rehearse rehearse-workstation rehearse-base changelog changelog-check release
+.PHONY: help lint syntax check apply smoke rehearse rehearse-workstation rehearse-base rehearse-nuc-bake check-rehearse apply-rehearse rehearse-clean changelog changelog-check release
 
 help: ## Show this help
 	@awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make \033[36m<target>\033[0m\n\nTargets:\n"} /^[a-zA-Z_-]+:.*?##/ { printf "  \033[36m%-10s\033[0m %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
@@ -40,6 +40,30 @@ rehearse-base: ## One-time setup: pull vanilla Tart image, bake CLT into tahoe-c
 	@command -v /opt/homebrew/bin/tart >/dev/null || { echo "tart not installed — brew bundle"; exit 1; }
 	@command -v /opt/homebrew/bin/sshpass >/dev/null || { echo "sshpass not installed — brew bundle"; exit 1; }
 	scripts/bake-rehearse-base.sh
+
+rehearse-nuc-bake: ## One-time setup: bake the Ubuntu 22.04 Lima base VM (nuc-rehearse-base)
+	@command -v /opt/homebrew/bin/limactl >/dev/null || { echo "limactl not installed — brew install lima"; exit 1; }
+	scripts/bake-rehearse-nuc-base.sh
+
+check-rehearse: ## Rehearse PLAY against a fresh Lima VM in --check mode (PLAY=playbooks/x.yml)
+	@command -v /opt/homebrew/bin/limactl >/dev/null || { echo "limactl not installed — brew install lima"; exit 1; }
+	@/opt/homebrew/bin/limactl list -q 2>/dev/null | grep -qx nuc-rehearse-base || { echo "nuc-rehearse-base missing — run 'make rehearse-nuc-bake'"; exit 1; }
+	@if [ -z "$(PLAY)" ]; then echo "Usage: make check-rehearse PLAY=playbooks/x.yml"; exit 1; fi
+	scripts/rehearse-nuc.sh "$(PLAY)"
+
+apply-rehearse: ## Apply PLAY against a fresh Lima VM, then prove idempotency via second --check (PLAY=playbooks/x.yml)
+	@command -v /opt/homebrew/bin/limactl >/dev/null || { echo "limactl not installed — brew install lima"; exit 1; }
+	@/opt/homebrew/bin/limactl list -q 2>/dev/null | grep -qx nuc-rehearse-base || { echo "nuc-rehearse-base missing — run 'make rehearse-nuc-bake'"; exit 1; }
+	@if [ -z "$(PLAY)" ]; then echo "Usage: make apply-rehearse PLAY=playbooks/x.yml"; exit 1; fi
+	scripts/rehearse-nuc.sh --apply "$(PLAY)"
+
+rehearse-clean: ## Destroy all transient nuc-rehearse-* Lima VMs (leaves nuc-rehearse-base intact)
+	@command -v /opt/homebrew/bin/limactl >/dev/null || { echo "limactl not installed — brew install lima"; exit 1; }
+	@for vm in $$(/opt/homebrew/bin/limactl list -q 2>/dev/null | grep -E '^nuc-rehearse-' | grep -v '^nuc-rehearse-base$$'); do \
+		echo "Destroying $$vm"; \
+		/opt/homebrew/bin/limactl stop "$$vm" 2>/dev/null || true; \
+		/opt/homebrew/bin/limactl delete --force "$$vm" 2>/dev/null || true; \
+	done
 
 changelog: ## Regenerate CHANGELOG.md from git history (deterministic; ADR-0012)
 	@command -v git-cliff >/dev/null || { echo "git-cliff not installed — run ./bootstrap.sh or brew install git-cliff"; exit 1; }
