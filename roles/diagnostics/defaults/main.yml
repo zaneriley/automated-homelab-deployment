@@ -1,0 +1,76 @@
+---
+# diagnostics role defaults.
+# Override via group_vars/<group>.yml or host_vars/<host>.yml.
+#
+# Lives in `defaults/` (not `vars/`) so group/host overrides win as documented;
+# `vars/` precedence sits above `group_vars/` and would silently shadow the
+# override (same precedence reasoning as system_defaults / workstation_tools).
+#
+# H6 brief (~/repos/obsidian-notes/.tmp/2026-04-27-device-health/literature/
+# sources/p208-brendan-gregg-crisis-tools.md): pre-install diagnostics so they
+# are present *before* the next hang, not during. Without sysstat history,
+# post-incident analysis collapses to whatever was in live process state at
+# moment-of-hang. Without bpftrace / bpfcc-tools / perf / trace-cmd, kernel-
+# level stalls are undebuggable live.
+
+# Master gate. Default ON because the whole point is "have these on every
+# fleet host before the next incident." Site.yml does NOT include this role
+# yet — Z chooses which inventory groups opt in. Flipping this to false in
+# group_vars/<group>.yml is the per-group escape hatch once it's wired.
+diagnostics_enabled: true
+
+# sysstat (sa1 / sar) — highest single-tool leverage per p208. Not enabled
+# by default on Debian/Ubuntu post-install: package ships with /etc/default/
+# sysstat ENABLED="false". Flipping it to "true" + enabling the unit gets
+# 10-minute granular CPU/mem/IO/network history persisted under
+# /var/log/sysstat/ (28-day rolling window with default cron). Set false
+# only if a host genuinely cannot afford the disk/CPU overhead — which is
+# nothing on modern hardware.
+diagnostics_sysstat_enabled: true
+
+# Apt package set, Debian/Ubuntu names. Grouped by purpose so the override
+# pattern is "drop the group you don't want" rather than reconstructing the
+# full list from scratch. Keep the union flat here (one apt task, one loop)
+# so failures attribute to the specific package.
+#
+# Why these specifically (cross-references in [brackets]):
+#   sysstat                  — sa1/sar pre-incident history [p208 §2,§4]
+#   bpftrace, bpfcc-tools    — eBPF live tracing; opensnoop/execsnoop/
+#                              biosnoop/runqlat are the load-bearing ones
+#                              [p208 §2,§5]
+#   linux-tools-common       — perf wrapper + manpages
+#   linux-tools-generic      — tracks the active kernel ABI; preferred over
+#                              linux-tools-$(uname -r) which is host-pinned
+#                              and breaks on kernel upgrade [p208 §"Ubuntu
+#                              22.04 specifics"]
+#   trace-cmd                — ftrace frontend for kernel function tracing
+#   iotop, htop, iftop       — interactive triage (disk IO / CPU / network)
+#   strace, ltrace           — syscall + library-call tracing for stuck PIDs
+#   tcpdump                  — packet capture; iproute2 (ss) is already
+#                              default so not listed here
+#   rasdaemon                — DRAM/PCIe/CPU MCE error daemon. Replaces
+#                              deprecated mcelog (removed from Debian; H2
+#                              brief p123). On non-ECC hosts still useful
+#                              for CPU MCE / PCIe AER / thermal events.
+diagnostics_packages:
+  - sysstat
+  - bpftrace
+  - bpfcc-tools
+  - linux-tools-common
+  - linux-tools-generic
+  - trace-cmd
+  - iotop
+  - htop
+  - iftop
+  - strace
+  - ltrace
+  - tcpdump
+  - rasdaemon
+
+# Services to enable + start once the packages are installed. sysstat is
+# conditional on diagnostics_sysstat_enabled (its unit is a no-op without
+# the /etc/default/sysstat flag flipped). rasdaemon has no equivalent
+# config gate — package install is enough; the daemon is harmless on
+# non-ECC hardware (p123: still captures CPU MCE / PCIe AER / thermal).
+diagnostics_services:
+  - rasdaemon

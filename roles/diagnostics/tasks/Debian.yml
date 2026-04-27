@@ -1,0 +1,126 @@
+---
+# roles/diagnostics/tasks/Debian.yml
+# Debian/Ubuntu body for the diagnostics role. Pre-install tracing +
+# monitoring tooling (H6 brief — p208 Brendan Gregg) so they're already
+# present before the next hang, plus the rasdaemon MCE/EDAC daemon (H2
+# brief — p123).
+#
+# Idempotency posture (ADR-0009): apt + lineinfile + service modules all
+# read-before-write and report changed honestly. Second `--check --diff`
+# run after apply must report zero changes. No `command:` shells out to
+# apt-get / systemctl — the native modules are the correctness witness.
+
+# ---------- Packages ----------
+
+# apt cache refresh is gated by cache_valid_time so we don't hammer the
+# mirror on every play run. 3600s is the harness convention everywhere
+# else apt is used (legacy/ansible/setup_nuc.yml). No version pins —
+# upstream Debian/Ubuntu ship known-good versions; pinning here is anti-
+# pattern unless an upstream bug forces it.
+- name: "Diagnostics — install tracing + monitoring packages"
+  ansible.builtin.apt:
+    name: "{{ diagnostics_packages }}"
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+  tags: [diagnostics, packages]
+
+# ---------- sysstat — flip the post-install kill switch ----------
+# Debian/Ubuntu ship /etc/default/sysstat with ENABLED="false" by default;
+# the systemd unit is a no-op until this flag flips. Without it, sa1 never
+# runs and there's no rolling /var/log/sysstat/ history — i.e. the whole
+# reason we installed sysstat (p208 §4) is unrealised. lineinfile with
+# anchored regexp is honestly idempotent: it only touches the file when
+# the line genuinely differs.
+#
+# Check-mode caveat: under --check on a fresh host where sysstat isn't
+# installed yet, the apt task above is simulated, so /etc/default/sysstat
+# does not exist on disk. lineinfile would fail "Destination does not
+# exist" and abort the play. Stat the file first and condition the edit
+# on its presence — on real apply the apt task runs for real, the file
+# exists, and lineinfile fires; on --check against a fresh host the edit
+# is skipped *with a visible "skipped" line* so the operator sees the
+# pending work, rather than the play aborting with a misleading error.
+
+- name: "Diagnostics — stat /etc/default/sysstat (check-mode-safe gate)"
+  ansible.builtin.stat:
+    path: /etc/default/sysstat
+  register: diagnostics_sysstat_default_stat
+  when: diagnostics_sysstat_enabled | bool
+  tags: [diagnostics, sysstat]
+
+- name: "Diagnostics — enable sysstat data collection (/etc/default/sysstat)"
+  ansible.builtin.lineinfile:
+    path: /etc/default/sysstat
+    regexp: '^ENABLED='
+    line: 'ENABLED="true"'
+    state: present
+  when:
+    - diagnostics_sysstat_enabled | bool
+    - diagnostics_sysstat_default_stat.stat.exists | default(false)
+  notify: Restart sysstat
+  tags: [diagnostics, sysstat]
+
+- name: "Diagnostics — enable + start sysstat service"
+  ansible.builtin.service:
+    name: sysstat
+    enabled: true
+    state: started
+  when:
+    - diagnostics_sysstat_enabled | bool
+    - diagnostics_sysstat_default_stat.stat.exists | default(false)
+  tags: [diagnostics, sysstat]
+
+# ---------- rasdaemon — MCE / EDAC / PCIe AER daemon ----------
+# Captures CPU MCE, PCIe AER, thermal MCE, and (where ECC exists) DRAM
+# CE/UE counts to /var/lib/rasdaemon/ras-mc_event.db. On non-ECC hardware
+# (e.g. star-caster's i5-1340P) the DRAM channel is dark, but the CPU /
+# PCIe / thermal channels still earn their keep (p123 §"What it captures
+# on a NON-ECC NUC"). No /etc/default/ flag to flip — package install +
+# enable is sufficient.
+
+- name: "Diagnostics — enable + start fleet daemons (rasdaemon)"
+  ansible.builtin.service:
+    name: "{{ item }}"
+    enabled: true
+    state: started
+  loop: "{{ diagnostics_services }}"
+  loop_control:
+    label: "{{ item }}"
+  # Skip in check mode on a host where the package isn't installed yet —
+  # systemd will not know the unit, and the task fails opaquely. Real
+  # apply runs the apt task for real and the unit is registered before
+  # this task fires. Same shape as the sysstat stat-gate above.
+  when: not ansible_check_mode
+  tags: [diagnostics, services]
+
+# ---------- Verify ----------
+# Cheap post-install sanity probes. `bpftrace --version` confirms the
+# binary is on PATH and the BTF/headers situation is sane enough to load
+# the runtime; `sar -V` confirms sysstat is callable. Both are read-only
+# (changed_when: false) so they don't lie about state. failed_when keeps
+# them honest — a missing binary is a real failure, not a warning.
+# Skipped in check mode because the binaries aren't on PATH until the
+# apt task runs for real.
+
+- name: "Diagnostics — verify bpftrace is callable"
+  ansible.builtin.command:
+    cmd: bpftrace --version
+  register: diagnostics_bpftrace_probe
+  changed_when: false
+  check_mode: false
+  failed_when: diagnostics_bpftrace_probe.rc != 0
+  when: not ansible_check_mode
+  tags: [diagnostics, verify]
+
+- name: "Diagnostics — verify sar (sysstat) is callable"
+  ansible.builtin.command:
+    cmd: sar -V
+  register: diagnostics_sar_probe
+  changed_when: false
+  check_mode: false
+  failed_when: diagnostics_sar_probe.rc != 0
+  when:
+    - diagnostics_sysstat_enabled | bool
+    - not ansible_check_mode
+  tags: [diagnostics, verify]

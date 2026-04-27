@@ -1,0 +1,12 @@
+---
+# roles/diagnostics/handlers/main.yml
+# Restart sysstat when /etc/default/sysstat changes — the systemd unit
+# reads ENABLED= at start time, so flipping the flag without a restart
+# leaves the service running with stale config. The enable+start task
+# below the lineinfile gets the *first* boot right; this handler covers
+# subsequent flag flips.
+
+- name: Restart sysstat
+  ansible.builtin.service:
+    name: sysstat
+    state: restarted
