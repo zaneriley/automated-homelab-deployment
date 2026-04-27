@@ -30,6 +30,8 @@ cask "1password"
 cask "1password-cli"
 cask "nikitabobko/tap/aerospace"
 cask "obsidian"   # vault tracked at ~/repos/obsidian-notes (see workstation_tools role + manual-steps.md)
+cask "claude-code"   # Claude Code CLI; native binary, no Node runtime
+cask "claude"        # Claude desktop app (hosts Cowork)
 
 # === Fonts ===
 cask "font-jetbrains-mono-nerd-font"
