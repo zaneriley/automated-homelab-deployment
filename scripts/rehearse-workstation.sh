@@ -160,17 +160,29 @@ echo "$APPLY1_RECAP" | grep -qE 'failed=0\b' || die "apply 1 reported failures: 
 echo "$APPLY1_RECAP" | grep -qvE 'changed=0\b' || die "apply 1 reported zero changes — fixtures wrong?: $APPLY1_RECAP"
 
 # -- Independent verification: positive presence of the agent surface --
+# Bundled into a single ssh call to avoid macOS sshd MaxStartups
+# throttling against rapid-fire connections; failing exits with a
+# distinct rc per check so the die message names the broken bit.
 log "Independent verify inside VM"
-ssh_vm 'test -d ~/.agents/.git'   || die "FAIL — ~/.agents/.git not present"
-ssh_vm 'test -f ~/.agents/AGENTS.md' || die "FAIL — ~/.agents/AGENTS.md missing in cloned repo"
-ssh_vm 'test -d ~/.agents/skills' || die "FAIL — ~/.agents/skills missing in cloned repo"
-ssh_vm 'test -L ~/.claude/CLAUDE.md' || die "FAIL — ~/.claude/CLAUDE.md not a symlink"
-ssh_vm 'test -L ~/.claude/skills'    || die "FAIL — ~/.claude/skills not a symlink"
-ssh_vm '[ "$(readlink ~/.claude/CLAUDE.md)" = "$HOME/.agents/AGENTS.md" ]' \
-  || die "FAIL — ~/.claude/CLAUDE.md target wrong: $(ssh_vm 'readlink ~/.claude/CLAUDE.md')"
-ssh_vm '[ "$(readlink ~/.claude/skills)" = "$HOME/.agents/skills" ]' \
-  || die "FAIL — ~/.claude/skills target wrong: $(ssh_vm 'readlink ~/.claude/skills')"
-log "Presence verified: pai cloned, both Claude symlinks resolve correctly"
+ssh_vm bash -s <<'EOF' || die "FAIL — agent_surface verification (rc=$? — see line above for failed check)"
+set -e
+test -d ~/.agents/.git                                                                        || { echo "FAIL: ~/.agents/.git missing"; exit 11; }
+test -f ~/.agents/AGENTS.md                                                                   || { echo "FAIL: ~/.agents/AGENTS.md missing"; exit 12; }
+test -d ~/.agents/skills                                                                      || { echo "FAIL: ~/.agents/skills missing"; exit 13; }
+test -L ~/.claude/CLAUDE.md                                                                   || { echo "FAIL: ~/.claude/CLAUDE.md not a symlink"; exit 14; }
+test -L ~/.claude/skills                                                                      || { echo "FAIL: ~/.claude/skills not a symlink"; exit 15; }
+[ "$(readlink ~/.claude/CLAUDE.md)" = "$HOME/.agents/AGENTS.md" ]                              || { echo "FAIL: CLAUDE.md target wrong: $(readlink ~/.claude/CLAUDE.md)"; exit 16; }
+[ "$(readlink ~/.claude/skills)" = "$HOME/.agents/skills" ]                                    || { echo "FAIL: skills target wrong: $(readlink ~/.claude/skills)"; exit 17; }
+# settings.json must be a real file (not a symlink — anthropics/claude-code#40857) matching pai bytes.
+test -f ~/.claude/settings.json && [ ! -L ~/.claude/settings.json ]                            || { echo "FAIL: settings.json missing or unexpectedly a symlink"; exit 18; }
+cmp -s ~/.claude/settings.json ~/.agents/claude-code/settings.json                             || { echo "FAIL: settings.json bytes differ from pai source"; exit 19; }
+# hooks/ stays a real dir (full-dir symlinks broken — #5433); hook script is a file-level symlink.
+test -d ~/.claude/hooks && [ ! -L ~/.claude/hooks ]                                            || { echo "FAIL: ~/.claude/hooks missing or unexpectedly a symlink"; exit 20; }
+test -L ~/.claude/hooks/block-co-author.sh                                                     || { echo "FAIL: hook script not a symlink"; exit 21; }
+[ "$(readlink ~/.claude/hooks/block-co-author.sh)" = "$HOME/.agents/claude-code/hooks/block-co-author.sh" ] || { echo "FAIL: hook symlink target wrong: $(readlink ~/.claude/hooks/block-co-author.sh)"; exit 22; }
+test -x ~/.claude/hooks/block-co-author.sh                                                    || { echo "FAIL: hook script not executable through symlink"; exit 23; }
+EOF
+log "Presence verified: pai cloned, CLAUDE.md + skills symlinked, settings.json copied, hook script symlinked"
 
 # -- Apply 2 (--check): idempotency proof. agent_surface tasks must
 # all report changed=0 because the stat-gated clone is a no-op when
