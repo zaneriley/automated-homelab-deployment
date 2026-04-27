@@ -143,3 +143,36 @@
     state: link
     force: true
   tags: [workstation_tools, agent_surface]
+
+# settings.json is copied (not symlinked) because Claude Code rewrites
+# the file via atomic-rename on session exit, which would replace any
+# symlink with a regular file (anthropics/claude-code#40857) and also
+# degrades permission lookups on every Bash call (#3575). The role is
+# the canonical re-set: drift between sessions is expected; `make apply`
+# returns to the pai-tracked baseline.
+- name: "Workstation_tools — copy Claude Code settings.json from pai"
+  ansible.builtin.copy:
+    src: "{{ workstation_tools_pai_clone_path }}/claude-code/settings.json"
+    dest: "{{ workstation_tools_claude_dir }}/settings.json"
+    remote_src: true
+    mode: "0644"
+  tags: [workstation_tools, agent_surface]
+
+- name: "Workstation_tools — ensure ~/.claude/hooks directory exists"
+  ansible.builtin.file:
+    path: "{{ workstation_tools_claude_dir }}/hooks"
+    state: directory
+    mode: "0755"
+  tags: [workstation_tools, agent_surface]
+
+# Hook script is a *file-level* symlink — Claude Code reads hook scripts
+# but never writes them, so a symlink at this granularity is safe. A
+# full ~/.claude/hooks/ directory symlink is reportedly broken
+# (anthropics/claude-code#5433: hooks via symlinked dir hang or fail).
+- name: "Workstation_tools — symlink ~/.claude/hooks/block-co-author.sh → pai hook"
+  ansible.builtin.file:
+    src: "{{ workstation_tools_pai_clone_path }}/claude-code/hooks/block-co-author.sh"
+    dest: "{{ workstation_tools_claude_dir }}/hooks/block-co-author.sh"
+    state: link
+    force: true
+  tags: [workstation_tools, agent_surface]
