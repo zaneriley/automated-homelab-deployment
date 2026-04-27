@@ -142,6 +142,28 @@ The `harden` role already addresses the *behavioral* side — supporting daemons
 
 ---
 
+## GitHub — gh credential helper for HTTPS clones
+
+Private repos (`pai`, `obsidian-notes`, …) are cloned via HTTPS so the `gh` CLI's keychain-backed OAuth token handles auth non-interactively — no per-machine SSH key sprawl, no 1Password SSH agent dependency. Without this step, `git clone https://github.com/zaneriley/<private-repo>` prompts for credentials.
+
+One-shot, on a fresh Mac (after `gh auth login`):
+
+```
+gh auth setup-git
+```
+
+Verify:
+
+```
+git config --global --get-all credential.https://github.com.helper
+```
+
+should print `!/opt/homebrew/bin/gh auth git-credential`. After that, any `git clone https://github.com/zaneriley/<private-repo>` works without further auth, including from inside Ansible's `git` module.
+
+Why manual rather than scripted: `gh auth login` is browser-OAuth and can't be fully automated. Codifying the one-line `setup-git` follow-up as an Ansible task earns no durability over running both during the same first-install session.
+
+---
+
 ## Obsidian — clone the vault
 
 `Brewfile` installs `Obsidian.app`. The vault content (notes + `.obsidian/` config + plugin binaries) lives in a separate private repo at `git@github.com:zaneriley/obsidian-notes` and is its own source of truth — the harness only ensures the app is installed and that the vault is cloned at the canonical path.
