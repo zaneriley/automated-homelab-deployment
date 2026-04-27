@@ -75,6 +75,7 @@ Every tracked top-level entry, with a one-line purpose. Local conventions live n
 | `inventory/` | WHO — host groups by purpose (`workstations`, `nucs`, `pis`, `nas`); OS resolved at runtime via `ansible_os_family` |
 | `group_vars/`, `host_vars/` | Group- and host-scoped overrides at repo root (Ansible's default lookup); `*.example.yml` tracked, `*.yml` gitignored |
 | `roles/` | WHAT — function-named, OS-dispatched inside via `import_tasks: "{{ ansible_os_family }}.yml"` (target shape — single-OS today, see §3 note below) |
+| `playbooks/` | One-shot host-targeted plays for cross-cutting fixes that don't yet warrant a role. Flat by design pending the `nuc_lifecycle` role refactor (ADR-0008); plays migrate into roles when their scope generalizes. Filename = the host or capability the play targets, never the operator's mental state (no `*-fixups.yml`). |
 | `dotfiles/` | Ansible role payload (NOT chezmoi/stow); symlinked into `~/.config/<tool>/` by `shell_env` |
 | `scripts/` | Operator helpers (Tart rehearsal today); prefer role-internal for new ones; junk-drawer cliff at ~3 distinct domains |
 | `terraform/<vendor>/` | Per-vendor declarative state — `cloudflare/` today, `tailscale/` next |
