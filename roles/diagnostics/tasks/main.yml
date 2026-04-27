@@ -1,0 +1,23 @@
+---
+# roles/diagnostics/tasks/main.yml
+# OS dispatcher per ADR-0013. Real work lives in tasks/<OsFamily>.yml.
+# Today only Debian (Ubuntu NUCs / Pis on Raspberry Pi OS) is implemented —
+# no empty Darwin.yml / RedHat.yml stubs (anti-scaffolding, ~/.agents/
+# AGENTS.md §3). When a non-Debian fleet host lands, add the matching
+# tasks/<OsFamily>.yml — the dispatch line below already routes correctly.
+#
+# include_tasks (not import_tasks) because the path interpolates a fact
+# (ansible_os_family). import_tasks is statically resolved at parse time
+# before facts exist; include_tasks resolves at task-run time, when facts
+# are populated. ADR-0013 wrote "import_tasks" as shorthand for the
+# dispatch shape; the correct Ansible mechanism for fact-driven paths is
+# include_tasks (ansible-lint flags import_tasks here as undefined-var).
+#
+# Whole-role gate: diagnostics_enabled (defaults/main.yml). Skipping at
+# the dispatch boundary means a disabled host pays zero apt-cache cost
+# and reports zero changes on --check.
+
+- name: "Diagnostics — dispatch to OS-family task file"
+  ansible.builtin.include_tasks: "{{ ansible_os_family }}.yml"
+  when: diagnostics_enabled | bool
+  tags: [diagnostics]
