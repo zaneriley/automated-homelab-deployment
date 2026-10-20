@@ -78,3 +78,81 @@
 # ---------- Layer 3: Block telemetry ----------
 # Default OFF. Can break softwareupdate. Adds land in follow-up commits
 # and are gated by harden_apple_cruft_block_telemetry.
+
+# ---------- Network exposure ----------
+# Not a de-Apple layer — see the "Network exposure" header in
+# defaults/main.yml for toggles, blast radius, and undo.
+
+# Sharing services: read every listening TCP socket once, then assert
+# each port's state. netstat sees launchd-owned sockets without root.
+# Loopback-only listeners are ignored — they are not reachable from
+# the network.
+- name: "Harden/Exposure — read listening TCP sockets"
+  ansible.builtin.command:
+    argv: [/usr/sbin/netstat, -an, -p, tcp]
+  register: harden_netstat
+  changed_when: false
+  check_mode: false
+  when: harden_sharing_services_assert | bool
+  tags: [harden, network_exposure, sharing_services]
+
+- name: "Harden/Exposure — extract non-loopback listening ports"
+  ansible.builtin.set_fact:
+    harden_listening_ports: >-
+      {{ harden_netstat.stdout
+         | regex_findall('^tcp(?:4|6|46)\s+\d+\s+\d+\s+(\S+)\.(\d+)\s+\S+\s+LISTEN', multiline=True)
+         | rejectattr('0', 'match', '^(127\.|::1$)')
+         | map(attribute='1') | map('int') | unique | list }}
+  when: harden_sharing_services_assert | bool
+  tags: [harden, network_exposure, sharing_services]
+
+- name: "Harden/Exposure — assert sharing services that must be off"
+  ansible.builtin.assert:
+    that: item.port not in harden_listening_ports
+    fail_msg: >-
+      {{ item.service }} is listening on TCP {{ item.port }}. Turn it off in
+      System Settings → General → Sharing, or allow it deliberately by
+      overriding harden_sharing_ports_closed for this host.
+    quiet: true
+  loop: "{{ harden_sharing_ports_closed }}"
+  loop_control:
+    label: "{{ item.service }} (TCP {{ item.port }})"
+  when: harden_sharing_services_assert | bool
+  tags: [harden, network_exposure, sharing_services]
+
+- name: "Harden/Exposure — assert sharing services that must be on"
+  ansible.builtin.assert:
+    that: item.port in harden_listening_ports
+    fail_msg: >-
+      {{ item.service }} is not listening on TCP {{ item.port }}. Turn it on in
+      System Settings → General → Sharing.
+    quiet: true
+  loop: "{{ harden_sharing_ports_open }}"
+  loop_control:
+    label: "{{ item.service }} (TCP {{ item.port }})"
+  when: harden_sharing_services_assert | bool
+  tags: [harden, network_exposure, sharing_services]
+
+# Application Firewall. socketfilterfw has no "would change" mode, so
+# read the state first and only run the set command when it is off —
+# the same read-then-act pattern as the launchctl disables above.
+# State values: 0 = off, 1 = on, 2 = on and blocking all incoming
+# (stricter; left alone). An unparseable read fails the run loudly.
+- name: "Harden/Exposure — read Application Firewall state"
+  ansible.builtin.command:
+    argv: [/usr/libexec/ApplicationFirewall/socketfilterfw, --getglobalstate]
+  register: harden_firewall_read
+  changed_when: false
+  check_mode: false
+  when: harden_application_firewall | bool
+  tags: [harden, network_exposure, firewall]
+
+- name: "Harden/Exposure — turn on Application Firewall"
+  ansible.builtin.command:
+    argv: [/usr/libexec/ApplicationFirewall/socketfilterfw, --setglobalstate, "on"]
+  become: true
+  when:
+    - harden_application_firewall | bool
+    - (harden_firewall_read.stdout | regex_search('State = (\d)', '\\1') | first) == '0'
+  changed_when: true
+  tags: [harden, network_exposure, firewall]

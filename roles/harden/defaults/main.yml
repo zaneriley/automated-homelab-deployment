@@ -164,3 +164,48 @@ harden_apple_cruft_bundles:
   - Keynote.app
   - Numbers.app
   - Pages.app
+
+# ---------- Network exposure (not a de-Apple layer) ----------
+# What other machines on the network can reach on this host. Separate
+# from the ADR-0003 layers: those remove Apple features, this block
+# limits who can connect in.
+
+# Assert that macOS sharing services are in the expected state. Read-only:
+# a mismatch FAILS the run (any_errors_fatal) instead of being fixed,
+# because each service is a deliberate on/off choice made in
+# System Settings → General → Sharing. Blast radius: none (reads only).
+# Undo: set false, or edit the port lists below.
+#
+# Why this matters: CVE-2026-65400 (fixed in macOS 26.6.1) let anyone who
+# could reach Screen Sharing log in without credentials, and it was used
+# to install cryptominers on Macs with TCP 5900 reachable. Rotating the
+# password did not help; only patching or turning the service off did.
+harden_sharing_services_assert: true
+
+# Each service owns its well-known TCP port only while it is switched on
+# (launchd holds the listening socket for on-demand services), so a
+# non-loopback listener on the port is the honest "is it on" signal.
+# Override in host_vars to allow one deliberately.
+harden_sharing_ports_closed:
+  - { service: "Screen Sharing", port: 5900 }
+  - { service: "Remote Management (Apple Remote Desktop)", port: 3283 }
+  - { service: "File Sharing (SMB)", port: 445 }
+  - { service: "Remote Apple Events", port: 3031 }
+
+# Remote Login stays on: the master node is headless-capable and is
+# reached over SSH (Tailscale, phone-to-Codex). Narrowing sshd itself
+# (keys only, interface binding) is a separate change.
+harden_sharing_ports_open:
+  - { service: "Remote Login (SSH)", port: 22 }
+
+# Turn on the built-in Application Firewall (inbound, per-application).
+# Blast radius: an app that is neither Apple-signed nor a validly signed
+# download gets its incoming connections blocked until allowed in
+# System Settings → Network → Firewall → Options. Apple's own sharing
+# services (sshd included) are not filtered by it. It has no port or
+# interface rules, so it is not the network boundary — LuLu covers
+# outbound, and Tailscale/pf are the place for per-interface rules.
+# Undo: set false, then
+#   sudo /usr/libexec/ApplicationFirewall/socketfilterfw --setglobalstate off
+# (false only stops this role from turning it on; it never turns it off).
+harden_application_firewall: true
